@@ -29,4 +29,12 @@ urlpatterns = [
         "api/",
         include("apps.sales.urls"),
     ),
+    path(
+    "api/",
+    include("apps.inventory.urls"),
+),
+path(
+    "api/",
+    include("apps.products.urls"),
+),
 ]

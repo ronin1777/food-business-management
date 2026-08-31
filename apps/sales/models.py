@@ -272,6 +272,7 @@ class CustomerTransactionType(models.TextChoices):
     PAYMENT = "payment", "پرداخت"
     REFUND = "refund", "برگشت وجه"
     ADJUSTMENT = "adjustment", "اصلاح حساب"
+    REVERSAL = "reversal", "معکوس"
 
 
 class CustomerAccountDirection(models.TextChoices):
@@ -307,6 +308,14 @@ class CustomerTransaction(models.Model):
         decimal_places=2,
     )
 
+    reverses = models.ForeignKey(
+        "self",
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        related_name="reversal_transactions",
+    )
+
     order = models.ForeignKey(
         Order,
         on_delete=models.PROTECT,
@@ -327,7 +336,9 @@ class CustomerTransaction(models.Model):
         blank=True,
     )
 
-    created_at = models.DateTimeField(auto_now_add=True)
+    created_at = models.DateTimeField(
+        auto_now_add=True,
+    )
 
     class Meta:
         ordering = ["created_at"]
@@ -337,11 +348,16 @@ class CustomerTransaction(models.Model):
                 condition=models.Q(amount__gt=0),
                 name="customer_transaction_amount_gt_zero",
             ),
+            models.UniqueConstraint(
+                fields=["reverses"],
+                condition=models.Q(reverses__isnull=False),
+                name="unique_customer_transaction_reversal",
+            ),
         ]
 
     def __str__(self) -> str:
         return (
-            f"{self.customer} - "
-            f"{self.transaction_type} - "
+            f"{self.customer} | "
+            f"{self.transaction_type} | "
             f"{self.amount}"
         )

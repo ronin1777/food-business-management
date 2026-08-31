@@ -290,6 +290,7 @@ class SupplierTransactionType(models.TextChoices):
     PAYMENT = "payment", "پرداخت"
     REFUND = "refund", "برگشت خرید"
     ADJUSTMENT = "adjustment", "اصلاح حساب"
+    REVERSAL = "reversal", "معکوس"
 
 
 class AccountDirection(models.TextChoices):
@@ -325,6 +326,14 @@ class SupplierTransaction(models.Model):
         decimal_places=2,
     )
 
+    reverses = models.ForeignKey(
+        "self",
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        related_name="reversal_transactions",
+    )
+
     purchase = models.ForeignKey(
         Purchase,
         on_delete=models.PROTECT,
@@ -345,7 +354,9 @@ class SupplierTransaction(models.Model):
         blank=True,
     )
 
-    created_at = models.DateTimeField(auto_now_add=True)
+    created_at = models.DateTimeField(
+        auto_now_add=True,
+    )
 
     class Meta:
         ordering = ["created_at"]
@@ -355,7 +366,16 @@ class SupplierTransaction(models.Model):
                 condition=models.Q(amount__gt=0),
                 name="supplier_transaction_amount_gt_zero",
             ),
+            models.UniqueConstraint(
+                fields=["reverses"],
+                condition=models.Q(reverses__isnull=False),
+                name="unique_supplier_transaction_reversal",
+            ),
         ]
 
     def __str__(self) -> str:
-        return f"{self.supplier} - {self.transaction_type} - {self.amount}"
+        return (
+            f"{self.supplier} | "
+            f"{self.transaction_type} | "
+            f"{self.amount}"
+        )

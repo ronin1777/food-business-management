@@ -5,10 +5,34 @@ from rest_framework import serializers
 from apps.inventory.models import Ingredient
 from .models import (
     Purchase,
+    PurchaseAdditionalCost,
     PurchaseAdditionalCostType,
+    PurchaseItem,
     Supplier,
     SupplierPaymentMethod,
+    SupplierTransaction,
 )
+
+
+class PurchaseListSerializer(serializers.ModelSerializer):
+    supplier_name = serializers.CharField(
+        source="supplier.name",
+        read_only=True,
+        allow_null=True,
+    )
+
+    class Meta:
+        model = Purchase
+        fields = (
+            "id",
+            "supplier",
+            "supplier_name",
+            "purchased_at",
+            "note",
+            "created_at",
+        )
+        read_only_fields = fields
+
 
 class PurchaseItemInputSerializer(serializers.Serializer):
     ingredient = serializers.PrimaryKeyRelatedField(
@@ -235,3 +259,205 @@ class SupplierAccountSerializer(serializers.Serializer):
             "id": supplier.id,
             "name": supplier.name,
         }
+
+
+
+class PurchaseItemSerializer(serializers.ModelSerializer):
+    ingredient_name = serializers.CharField(
+        source="ingredient.name",
+        read_only=True,
+    )
+
+    class Meta:
+        model = PurchaseItem
+        fields = (
+            "id",
+            "ingredient",
+            "ingredient_name",
+            "quantity",
+            "unit",
+            "base_quantity",
+            "unit_price",
+            "discount",
+            "total_price",
+            "created_at",
+        )
+        read_only_fields = fields
+
+
+class PurchaseAdditionalCostSerializer(serializers.ModelSerializer):
+    cost_type_display = serializers.CharField(
+        source="get_cost_type_display",
+        read_only=True,
+    )
+
+    class Meta:
+        model = PurchaseAdditionalCost
+        fields = (
+            "id",
+            "cost_type",
+            "cost_type_display",
+            "amount",
+            "note",
+            "created_at",
+        )
+        read_only_fields = fields
+
+
+class PurchaseDetailSerializer(serializers.ModelSerializer):
+    supplier_name = serializers.CharField(
+        source="supplier.name",
+        read_only=True,
+        allow_null=True,
+    )
+
+    items = PurchaseItemSerializer(
+        many=True,
+        read_only=True,
+    )
+
+    additional_costs = PurchaseAdditionalCostSerializer(
+        many=True,
+        read_only=True,
+    )
+
+    items_total = serializers.SerializerMethodField()
+    additional_costs_total = serializers.SerializerMethodField()
+    grand_total = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Purchase
+        fields = (
+            "id",
+            "supplier",
+            "supplier_name",
+            "organization",
+            "purchased_at",
+            "note",
+            "items",
+            "additional_costs",
+            "items_total",
+            "additional_costs_total",
+            "grand_total",
+            "created_at",
+            "updated_at",
+        )
+        read_only_fields = fields
+
+    def get_items_total(self, obj):
+        return sum(
+            (
+                item.total_price
+                for item in obj.items.all()
+            ),
+            Decimal("0"),
+        )
+
+    def get_additional_costs_total(self, obj):
+        return sum(
+            (
+                cost.amount
+                for cost in obj.additional_costs.all()
+            ),
+            Decimal("0"),
+        )
+
+    def get_grand_total(self, obj):
+        return (
+            self.get_items_total(obj)
+            + self.get_additional_costs_total(obj)
+        )
+
+
+class SupplierListSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Supplier
+        fields = (
+            "id",
+            "name",
+            "phone",
+            "is_active",
+            "created_at",
+        )
+        read_only_fields = fields
+
+
+class SupplierDetailSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Supplier
+        fields = (
+            "id",
+            "name",
+            "phone",
+            "is_active",
+            "created_at",
+            "updated_at",
+        )
+        read_only_fields = fields
+
+
+
+class SupplierCreateSerializer(serializers.Serializer):
+    name = serializers.CharField(
+        max_length=150,
+    )
+
+    phone = serializers.CharField(
+        max_length=30,
+        required=False,
+        allow_blank=True,
+        default="",
+    )
+
+    is_active = serializers.BooleanField(
+        required=False,
+        default=True,
+    )
+
+
+class SupplierUpdateSerializer(serializers.Serializer):
+    name = serializers.CharField(
+        max_length=150,
+        required=False,
+    )
+
+    phone = serializers.CharField(
+        max_length=30,
+        required=False,
+        allow_blank=True,
+    )
+
+    is_active = serializers.BooleanField(
+        required=False,
+    )
+
+
+class SupplierTransactionSerializer(
+    serializers.ModelSerializer,
+):
+    transaction_type_display = serializers.CharField(
+        source="get_transaction_type_display",
+        read_only=True,
+    )
+
+    direction_display = serializers.CharField(
+        source="get_direction_display",
+        read_only=True,
+    )
+
+    class Meta:
+        model = SupplierTransaction
+        fields = (
+            "id",
+            "supplier",
+            "transaction_type",
+            "transaction_type_display",
+            "direction",
+            "direction_display",
+            "amount",
+            "purchase",
+            "payment",
+            "note",
+            "created_at",
+        )
+        read_only_fields = fields

@@ -405,3 +405,121 @@ class SupplierAccountService:
             "balance": balance,
             "direction": direction,
         }
+
+
+
+class SupplierService:
+    @staticmethod
+    def create_supplier(
+        *,
+        organization: Organization,
+        name: str,
+        phone: str = "",
+        is_active: bool = True,
+    ) -> Supplier:
+        name = name.strip()
+
+        if not name:
+            raise ValidationError(
+                {
+                    "name": (
+                        "نام تأمین‌کننده نمی‌تواند خالی باشد."
+                    )
+                }
+            )
+
+        supplier = Supplier.objects.create(
+            organization=organization,
+            name=name,
+            phone=phone.strip(),
+            is_active=is_active,
+        )
+
+        return supplier
+
+    @staticmethod
+    def update_supplier(
+        *,
+        organization: Organization,
+        supplier: Supplier,
+        name: str | None = None,
+        phone: str | None = None,
+        is_active: bool | None = None,
+    ) -> Supplier:
+        if supplier.organization_id != organization.id:
+            raise ValidationError(
+                {
+                    "supplier": (
+                        "این تأمین‌کننده متعلق به "
+                        "کسب‌وکار شما نیست."
+                    )
+                }
+            )
+
+        if name is not None:
+            name = name.strip()
+
+            if not name:
+                raise ValidationError(
+                    {
+                        "name": (
+                            "نام تأمین‌کننده نمی‌تواند "
+                            "خالی باشد."
+                        )
+                    }
+                )
+
+            supplier.name = name
+
+        if phone is not None:
+            supplier.phone = phone.strip()
+
+        if is_active is not None:
+            supplier.is_active = is_active
+
+        supplier.save()
+
+        return supplier
+
+
+class SupplierTransactionReversalService:
+    @staticmethod
+    @transaction.atomic
+    def reverse_transaction(
+        *,
+        transaction: SupplierTransaction,
+        created_by=None,
+        note: str = "",
+    ) -> SupplierTransaction:
+        if transaction.reversal_transactions.exists():
+            raise ValidationError(
+                "این تراکنش قبلاً معکوس شده است."
+            )
+
+        if transaction.transaction_type == (
+            SupplierTransactionType.REVERSAL
+        ):
+            raise ValidationError(
+                "یک تراکنش معکوس را نمی‌توان دوباره معکوس کرد."
+            )
+
+        reversed_direction = (
+            AccountDirection.CREDIT
+            if transaction.direction
+            == AccountDirection.DEBIT
+            else AccountDirection.DEBIT
+        )
+
+        return SupplierTransaction.objects.create(
+            organization=transaction.organization,
+            supplier=transaction.supplier,
+            transaction_type=(
+                SupplierTransactionType.REVERSAL
+            ),
+            direction=reversed_direction,
+            amount=transaction.amount,
+            purchase=transaction.purchase,
+            payment=transaction.payment,
+            reverses=transaction,
+            note=note,
+        )

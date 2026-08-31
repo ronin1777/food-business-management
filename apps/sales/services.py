@@ -4,7 +4,7 @@ from typing import Any
 from django.core.exceptions import ValidationError
 from django.db import models, transaction
 from django.db.models import Sum
-
+from apps.inventory.services import InventoryReversalService
 from apps.inventory.models import (
     Ingredient,
     InventoryTransaction,
@@ -23,6 +23,7 @@ from .models import (
     OrderItem,
     OrderItemIngredient,
     OrderPaymentStatus,
+    OrderStatus,
 )
 
 
@@ -447,3 +448,215 @@ class OrderService:
         )
 
         return order_item
+
+
+
+
+class OrderCancellationService:
+    @staticmethod
+    @transaction.atomic
+    def cancel_order(
+        *,
+        organization: Organization,
+        order_id: int,
+        note: str = "",
+    ) -> Order:
+        order = (
+            Order.objects
+            .select_for_update()
+            .select_related("customer")
+            .get(
+                pk=order_id,
+                organization=organization,
+            )
+        )
+
+        if order.status == OrderStatus.CANCELLED:
+            raise ValidationError(
+                {
+                    "order": (
+                        "این سفارش قبلاً لغو شده است."
+                    )
+                }
+            )
+
+        inventory_transactions = (
+            InventoryTransaction.objects
+            .select_related("ingredient")
+            .filter(
+                organization=organization,
+                order_item_ingredient__order_item__order=order,
+                transaction_type=(
+                    InventoryTransactionType.ORDER_USAGE
+                ),
+                reverses__isnull=True,
+            )
+            .order_by("id")
+        )
+
+        for inventory_transaction in inventory_transactions:
+            InventoryReversalService.reverse_transaction(
+                transaction=inventory_transaction,
+                note=(
+                    note
+                    or f"لغو سفارش #{order.id}"
+                ),
+            )
+
+        if order.customer_id is not None:
+            sale_transactions = (
+                CustomerTransaction.objects
+                .select_for_update()
+                .filter(
+                    organization=organization,
+                    customer_id=order.customer_id,
+                    order=order,
+                    transaction_type=(
+                        CustomerTransactionType.SALE
+                    ),
+                    reverses__isnull=True,
+                )
+            )
+
+            for sale_transaction in sale_transactions:
+                CustomerTransactionReversalService.reverse_transaction(
+                    transaction=sale_transaction,
+                    note=(
+                        note
+                        or f"لغو سفارش #{order.id}"
+                    ),
+                )
+
+        order.status = OrderStatus.CANCELLED
+
+        order.save(
+            update_fields=[
+                "status",
+                "updated_at",
+            ]
+        )
+
+        return order
+
+
+
+
+class CustomerService:
+    @staticmethod
+    def create_customer(
+        *,
+        organization: Organization,
+        name: str,
+        phone: str = "",
+        note: str = "",
+        is_active: bool = True,
+    ) -> Customer:
+        name = name.strip()
+
+        if not name:
+            raise ValidationError(
+                {
+                    "name": (
+                        "نام مشتری نمی‌تواند خالی باشد."
+                    )
+                }
+            )
+
+        return Customer.objects.create(
+            organization=organization,
+            name=name,
+            phone=phone.strip(),
+            note=note.strip(),
+            is_active=is_active,
+        )
+
+    @staticmethod
+    def update_customer(
+        *,
+        organization: Organization,
+        customer: Customer,
+        name: str | None = None,
+        phone: str | None = None,
+        note: str | None = None,
+        is_active: bool | None = None,
+    ) -> Customer:
+        if customer.organization_id != organization.id:
+            raise ValidationError(
+                {
+                    "customer": (
+                        "این مشتری متعلق به "
+                        "کسب‌وکار شما نیست."
+                    )
+                }
+            )
+
+        if name is not None:
+            name = name.strip()
+
+            if not name:
+                raise ValidationError(
+                    {
+                        "name": (
+                            "نام مشتری نمی‌تواند "
+                            "خالی باشد."
+                        )
+                    }
+                )
+
+            customer.name = name
+
+        if phone is not None:
+            customer.phone = phone.strip()
+
+        if note is not None:
+            customer.note = note.strip()
+
+        if is_active is not None:
+            customer.is_active = is_active
+
+        customer.save()
+
+        return customer
+
+
+class CustomerTransactionReversalService:
+    @staticmethod
+    @transaction.atomic
+    def reverse_transaction(
+        *,
+        transaction: CustomerTransaction,
+        created_by=None,
+        note: str = "",
+    ) -> CustomerTransaction:
+        if transaction.reversal_transactions.exists():
+            raise ValidationError(
+                "این تراکنش قبلاً معکوس شده است."
+            )
+
+        if transaction.transaction_type == (
+            CustomerTransactionType.REVERSAL
+        ):
+            raise ValidationError(
+                "یک تراکنش معکوس را نمی‌توان دوباره معکوس کرد."
+            )
+
+        reversed_direction = (
+            CustomerAccountDirection.CREDIT
+            if transaction.direction
+            == CustomerAccountDirection.DEBIT
+            else CustomerAccountDirection.DEBIT
+        )
+
+        return CustomerTransaction.objects.create(
+            organization=transaction.organization,
+            customer=transaction.customer,
+            transaction_type=(
+                CustomerTransactionType.REVERSAL
+            ),
+            direction=reversed_direction,
+            amount=transaction.amount,
+            order=transaction.order,
+            payment=transaction.payment,
+            reverses=transaction,
+            note=note,
+        )

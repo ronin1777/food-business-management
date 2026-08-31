@@ -121,6 +121,7 @@ class InventoryTransactionType(models.TextChoices):
     ORDER_USAGE = "order_usage", "مصرف سفارش"
     WASTE = "waste", "دورریز"
     ADJUSTMENT = "adjustment", "اصلاح موجودی"
+    REVERSAL = "reversal", "معکوس"
 
 
 class InventoryTransaction(models.Model):
@@ -180,6 +181,14 @@ class InventoryTransaction(models.Model):
         related_name="inventory_transactions",
     )
 
+    reverses = models.ForeignKey(
+        "self",
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        related_name="reversal_transactions",
+    )
+
     note = models.TextField(
         blank=True,
     )
@@ -211,6 +220,11 @@ class InventoryTransaction(models.Model):
             models.CheckConstraint(
                 condition=models.Q(total_cost__gte=0),
                 name="inventory_transaction_total_cost_gte_zero",
+            ),
+            models.UniqueConstraint(
+                fields=["reverses"],
+                condition=models.Q(reverses__isnull=False),
+                name="unique_inventory_transaction_reversal",
             ),
         ]
 

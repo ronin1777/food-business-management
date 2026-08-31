@@ -1,13 +1,22 @@
 from decimal import Decimal
-from apps.products.models import Product
 
 from rest_framework import serializers
+
+from apps.products.models import Product
 
 from .models import (
     Customer,
     CustomerPaymentMethod,
+    CustomerTransaction,
     Order,
+    OrderItem,
+    OrderItemIngredient,
 )
+
+
+# ============================================================
+# Customer Payment
+# ============================================================
 
 
 class CustomerPaymentCreateSerializer(serializers.Serializer):
@@ -50,7 +59,10 @@ class CustomerPaymentCreateSerializer(serializers.Serializer):
                 "درخواست معتبر نیست."
             )
 
-        if customer.organization_id != request.user.organization.id:
+        if (
+            customer.organization_id
+            != request.user.organization.id
+        ):
             raise serializers.ValidationError(
                 "این مشتری متعلق به کسب‌وکار شما نیست."
             )
@@ -76,7 +88,10 @@ class CustomerPaymentCreateSerializer(serializers.Serializer):
                 "درخواست معتبر نیست."
             )
 
-        if order.organization_id != request.user.organization.id:
+        if (
+            order.organization_id
+            != request.user.organization.id
+        ):
             raise serializers.ValidationError(
                 "این سفارش متعلق به کسب‌وکار شما نیست."
             )
@@ -94,12 +109,18 @@ class CustomerPaymentCreateSerializer(serializers.Serializer):
             raise serializers.ValidationError(
                 {
                     "order": (
-                        "این سفارش متعلق به مشتری انتخاب‌شده نیست."
+                        "این سفارش متعلق به "
+                        "مشتری انتخاب‌شده نیست."
                     )
                 }
             )
 
         return attrs
+
+
+# ============================================================
+# Customer Account
+# ============================================================
 
 
 class CustomerAccountSerializer(serializers.Serializer):
@@ -133,6 +154,10 @@ class CustomerAccountSerializer(serializers.Serializer):
         }
 
 
+# ============================================================
+# Order Create
+# ============================================================
+
 
 class OrderItemCreateSerializer(serializers.Serializer):
     product = serializers.PrimaryKeyRelatedField(
@@ -143,7 +168,10 @@ class OrderItemCreateSerializer(serializers.Serializer):
         min_value=1,
     )
 
-    def validate_product(self, product: Product) -> Product:
+    def validate_product(
+        self,
+        product: Product,
+    ) -> Product:
         request = self.context.get("request")
 
         if request is None:
@@ -151,7 +179,10 @@ class OrderItemCreateSerializer(serializers.Serializer):
                 "درخواست معتبر نیست."
             )
 
-        if product.organization_id != request.user.organization.id:
+        if (
+            product.organization_id
+            != request.user.organization.id
+        ):
             raise serializers.ValidationError(
                 "این محصول متعلق به کسب‌وکار شما نیست."
             )
@@ -198,7 +229,10 @@ class OrderCreateSerializer(serializers.Serializer):
                 "درخواست معتبر نیست."
             )
 
-        if customer.organization_id != request.user.organization.id:
+        if (
+            customer.organization_id
+            != request.user.organization.id
+        ):
             raise serializers.ValidationError(
                 "این مشتری متعلق به کسب‌وکار شما نیست."
             )
@@ -209,3 +243,300 @@ class OrderCreateSerializer(serializers.Serializer):
             )
 
         return customer
+
+
+# ============================================================
+# Customer CRUD
+# ============================================================
+
+
+class CustomerCreateSerializer(serializers.Serializer):
+    name = serializers.CharField(
+        max_length=150,
+    )
+
+    phone = serializers.CharField(
+        max_length=30,
+        required=False,
+        allow_blank=True,
+        default="",
+    )
+
+    note = serializers.CharField(
+        required=False,
+        allow_blank=True,
+        default="",
+    )
+
+    is_active = serializers.BooleanField(
+        required=False,
+        default=True,
+    )
+
+
+class CustomerUpdateSerializer(serializers.Serializer):
+    name = serializers.CharField(
+        max_length=150,
+        required=False,
+    )
+
+    phone = serializers.CharField(
+        max_length=30,
+        required=False,
+        allow_blank=True,
+    )
+
+    note = serializers.CharField(
+        required=False,
+        allow_blank=True,
+    )
+
+    is_active = serializers.BooleanField(
+        required=False,
+    )
+
+
+class CustomerListSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Customer
+        fields = (
+            "id",
+            "name",
+            "phone",
+            "is_active",
+            "created_at",
+            "updated_at",
+        )
+        read_only_fields = fields
+
+
+class CustomerDetailSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Customer
+        fields = (
+            "id",
+            "name",
+            "phone",
+            "note",
+            "is_active",
+            "created_at",
+            "updated_at",
+        )
+        read_only_fields = fields
+
+
+# ============================================================
+# Order Item Output
+# ============================================================
+
+
+class OrderItemListSerializer(serializers.ModelSerializer):
+    product_name = serializers.CharField(
+        source="product.name",
+        read_only=True,
+    )
+
+    class Meta:
+        model = OrderItem
+        fields = (
+            "id",
+            "product",
+            "product_name",
+            "quantity",
+            "unit_price",
+            "total_price",
+            "material_cost",
+        )
+        read_only_fields = fields
+
+
+class OrderItemIngredientSerializer(
+    serializers.ModelSerializer,
+):
+    ingredient_name = serializers.CharField(
+        source="ingredient.name",
+        read_only=True,
+    )
+
+    class Meta:
+        model = OrderItemIngredient
+        fields = (
+            "id",
+            "ingredient",
+            "ingredient_name",
+            "quantity",
+            "unit_cost",
+            "total_cost",
+        )
+        read_only_fields = fields
+
+
+class OrderItemDetailSerializer(
+    serializers.ModelSerializer,
+):
+    product_name = serializers.CharField(
+        source="product.name",
+        read_only=True,
+    )
+
+    recipe_version = serializers.IntegerField(
+        source="recipe.version",
+        read_only=True,
+    )
+
+    ingredient_usages = serializers.SerializerMethodField()
+
+    class Meta:
+        model = OrderItem
+        fields = (
+            "id",
+            "product",
+            "product_name",
+            "recipe",
+            "recipe_version",
+            "quantity",
+            "unit_price",
+            "total_price",
+            "material_cost",
+            "ingredient_usages",
+            "created_at",
+        )
+        read_only_fields = fields
+
+    def get_ingredient_usages(self, obj):
+        usages = (
+            OrderItemIngredient.objects
+            .filter(order_item=obj)
+            .select_related("ingredient")
+        )
+
+        return OrderItemIngredientSerializer(
+            usages,
+            many=True,
+        ).data
+
+
+# ============================================================
+# Order Output
+# ============================================================
+
+
+class OrderListSerializer(serializers.ModelSerializer):
+    customer_name = serializers.CharField(
+        source="customer.name",
+        read_only=True,
+        allow_null=True,
+    )
+
+    class Meta:
+        model = Order
+        fields = (
+            "id",
+            "customer",
+            "customer_name",
+            "status",
+            "payment_status",
+            "ordered_at",
+            "created_at",
+        )
+        read_only_fields = fields
+
+
+class OrderDetailSerializer(serializers.ModelSerializer):
+    customer_name = serializers.CharField(
+        source="customer.name",
+        read_only=True,
+        allow_null=True,
+    )
+
+    items = OrderItemDetailSerializer(
+        many=True,
+        read_only=True,
+    )
+
+    total_amount = serializers.SerializerMethodField()
+
+    total_material_cost = (
+        serializers.SerializerMethodField()
+    )
+
+    gross_profit = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Order
+        fields = (
+            "id",
+            "customer",
+            "customer_name",
+            "status",
+            "payment_status",
+            "ordered_at",
+            "note",
+            "items",
+            "total_amount",
+            "total_material_cost",
+            "gross_profit",
+            "created_at",
+            "updated_at",
+        )
+        read_only_fields = fields
+
+    def get_total_amount(self, obj):
+        return sum(
+            (
+                item.total_price
+                for item in obj.items.all()
+            ),
+            Decimal("0"),
+        )
+
+    def get_total_material_cost(self, obj):
+        return sum(
+            (
+                item.material_cost
+                for item in obj.items.all()
+            ),
+            Decimal("0"),
+        )
+
+    def get_gross_profit(self, obj):
+        total_amount = self.get_total_amount(obj)
+
+        total_material_cost = (
+            self.get_total_material_cost(obj)
+        )
+
+        return (
+            total_amount
+            - total_material_cost
+        )
+
+
+class CustomerTransactionSerializer(
+    serializers.ModelSerializer,
+):
+    transaction_type_display = serializers.CharField(
+        source="get_transaction_type_display",
+        read_only=True,
+    )
+
+    direction_display = serializers.CharField(
+        source="get_direction_display",
+        read_only=True,
+    )
+
+    class Meta:
+        model = CustomerTransaction
+        fields = (
+            "id",
+            "transaction_type",
+            "transaction_type_display",
+            "direction",
+            "direction_display",
+            "amount",
+            "order",
+            "payment",
+            "note",
+            "created_at",
+        )
+        read_only_fields = fields

@@ -1,10 +1,14 @@
 from decimal import Decimal, ROUND_HALF_UP
 from typing import NamedTuple
+from decimal import Decimal
 
+from django.core.exceptions import ValidationError
+
+from apps.organizations.models import Organization
 from django.core.exceptions import ValidationError
 from django.db import transaction
 
-from .models import Ingredient
+from .models import Ingredient, InventoryTransaction, InventoryTransactionType
 
 
 MONEY_QUANTIZER = Decimal("0.01")
@@ -137,3 +141,194 @@ class InventoryCostService:
         )
 
 
+class IngredientService:
+    @staticmethod
+    def create_ingredient(
+        *,
+        organization: Organization,
+        name: str,
+        unit_type: str,
+        is_active: bool = True,
+    ) -> Ingredient:
+        name = name.strip()
+
+        if not name:
+            raise ValidationError(
+                {
+                    "name": (
+                        "نام ماده اولیه نمی‌تواند خالی باشد."
+                    )
+                }
+            )
+
+        if Ingredient.objects.filter(
+            organization=organization,
+            name=name,
+        ).exists():
+            raise ValidationError(
+                {
+                    "name": (
+                        "ماده اولیه‌ای با این نام "
+                        "قبلاً وجود دارد."
+                    )
+                }
+            )
+
+        return Ingredient.objects.create(
+            organization=organization,
+            name=name,
+            unit_type=unit_type,
+            is_active=is_active,
+        )
+
+    @staticmethod
+    def update_ingredient(
+        *,
+        organization: Organization,
+        ingredient: Ingredient,
+        name: str | None = None,
+        unit_type: str | None = None,
+        is_active: bool | None = None,
+    ) -> Ingredient:
+        if ingredient.organization_id != organization.id:
+            raise ValidationError(
+                {
+                    "ingredient": (
+                        "این ماده اولیه متعلق به "
+                        "کسب‌وکار شما نیست."
+                    )
+                }
+            )
+
+        if name is not None:
+            name = name.strip()
+
+            if not name:
+                raise ValidationError(
+                    {
+                        "name": (
+                            "نام ماده اولیه نمی‌تواند "
+                            "خالی باشد."
+                        )
+                    }
+                )
+
+            if Ingredient.objects.filter(
+                organization=organization,
+                name=name,
+            ).exclude(pk=ingredient.pk).exists():
+                raise ValidationError(
+                    {
+                        "name": (
+                            "ماده اولیه‌ای با این نام "
+                            "قبلاً وجود دارد."
+                        )
+                    }
+                )
+
+            ingredient.name = name
+
+        if unit_type is not None:
+            if ingredient.unit_type != unit_type:
+                if (
+                    ingredient.current_stock
+                    != Decimal("0")
+                    or ingredient.current_inventory_value
+                    != Decimal("0")
+                ):
+                    raise ValidationError(
+                        {
+                            "unit_type": (
+                                "واحد ماده اولیه‌ای که "
+                                "موجودی دارد قابل تغییر نیست."
+                            )
+                        }
+                    )
+
+                ingredient.unit_type = unit_type
+
+        if is_active is not None:
+            ingredient.is_active = is_active
+
+        ingredient.save()
+
+        return ingredient
+
+
+
+class InventoryReversalService:
+    @staticmethod
+    @transaction.atomic
+    def reverse_transaction(
+        *,
+        transaction: InventoryTransaction,
+        created_by=None,
+        note: str = "",
+    ) -> InventoryTransaction:
+        if transaction.reversal_transactions.exists():
+            raise ValidationError(
+                "این تراکنش قبلاً معکوس شده است."
+            )
+
+        if transaction.transaction_type == (
+            InventoryTransactionType.REVERSAL
+        ):
+            raise ValidationError(
+                "یک تراکنش معکوس را نمی‌توان دوباره معکوس کرد."
+            )
+
+        ingredient = (
+            Ingredient.objects
+            .select_for_update()
+            .get(pk=transaction.ingredient_id)
+        )
+
+        # Reverse a stock increase.
+        if transaction.quantity > Decimal("0"):
+            if ingredient.current_stock < transaction.quantity:
+                raise ValidationError(
+                    "موجودی فعلی برای معکوس کردن این تراکنش کافی نیست."
+                )
+
+            ingredient.current_stock -= transaction.quantity
+            ingredient.current_inventory_value -= (
+                transaction.total_cost
+            )
+
+            if ingredient.current_inventory_value < Decimal("0"):
+                ingredient.current_inventory_value = Decimal("0")
+
+        # Reverse a stock decrease.
+        else:
+            quantity_to_restore = abs(transaction.quantity)
+
+            ingredient.current_stock += quantity_to_restore
+            ingredient.current_inventory_value += (
+                transaction.total_cost
+            )
+
+        ingredient.save(
+            update_fields=[
+                "current_stock",
+                "current_inventory_value",
+                "updated_at",
+            ]
+        )
+
+        return InventoryTransaction.objects.create(
+            organization=transaction.organization,
+            ingredient=ingredient,
+            transaction_type=(
+                InventoryTransactionType.REVERSAL
+            ),
+            quantity=-transaction.quantity,
+            unit_cost=transaction.unit_cost,
+            total_cost=transaction.total_cost,
+            purchase_item=transaction.purchase_item,
+            order_item_ingredient=(
+                transaction.order_item_ingredient
+            ),
+            reverses=transaction,
+            created_by=created_by,
+            note=note,
+        )

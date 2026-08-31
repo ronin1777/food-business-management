@@ -5,6 +5,8 @@ from django.db import models
 from django.conf import settings
 
 
+
+
 class IngredientUnitType(models.TextChoices):
     WEIGHT = "weight", "وزنی"
     VOLUME = "volume", "حجمی"
@@ -18,6 +20,15 @@ BASE_UNIT_BY_TYPE: dict[str, str] = {
 }
 
 
+
+UNIT_TO_BASE_FACTOR: dict[str, Decimal] = {
+    "g": Decimal("1"),
+    "kg": Decimal("1000"),
+    "ml": Decimal("1"),
+    "l": Decimal("1000"),
+    "piece": Decimal("1"),
+}
+
 class Ingredient(models.Model):
     organization = models.ForeignKey(
         "organizations.Organization",
@@ -25,7 +36,9 @@ class Ingredient(models.Model):
         related_name="ingredients",
     )
 
-    name = models.CharField(max_length=150)
+    name = models.CharField(
+        max_length=150,
+    )
 
     unit_type = models.CharField(
         max_length=20,
@@ -36,26 +49,63 @@ class Ingredient(models.Model):
         max_digits=14,
         decimal_places=3,
         default=Decimal("0"),
-        validators=[MinValueValidator(Decimal("0"))],
+        validators=[
+            MinValueValidator(Decimal("0")),
+        ],
     )
 
-    is_active = models.BooleanField(default=True)
+    current_inventory_value = models.DecimalField(
+        max_digits=16,
+        decimal_places=2,
+        default=Decimal("0"),
+        validators=[
+            MinValueValidator(Decimal("0")),
+        ],
+    )
 
-    created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
+    is_active = models.BooleanField(
+        default=True,
+    )
+
+    created_at = models.DateTimeField(
+        auto_now_add=True,
+    )
+
+    updated_at = models.DateTimeField(
+        auto_now=True,
+    )
 
     class Meta:
         ordering = ["name"]
+
         constraints = [
             models.UniqueConstraint(
                 fields=["organization", "name"],
                 name="unique_ingredient_name_per_org",
+            ),
+            models.CheckConstraint(
+                condition=models.Q(current_stock__gte=0),
+                name="ingredient_stock_gte_zero",
+            ),
+            models.CheckConstraint(
+                condition=models.Q(current_inventory_value__gte=0),
+                name="ingredient_inventory_value_gte_zero",
             ),
         ]
 
     @property
     def base_unit(self) -> str:
         return BASE_UNIT_BY_TYPE[self.unit_type]
+
+    @property
+    def average_unit_cost(self) -> Decimal:
+        if self.current_stock == Decimal("0"):
+            return Decimal("0")
+
+        return (
+            self.current_inventory_value
+            / self.current_stock
+        )
 
     def __str__(self) -> str:
         return self.name
@@ -96,6 +146,24 @@ class InventoryTransaction(models.Model):
         decimal_places=3,
     )
 
+    unit_cost = models.DecimalField(
+        max_digits=14,
+        decimal_places=6,
+        default=Decimal("0"),
+        validators=[
+            MinValueValidator(Decimal("0")),
+        ],
+    )
+
+    total_cost = models.DecimalField(
+        max_digits=16,
+        decimal_places=2,
+        default=Decimal("0"),
+        validators=[
+            MinValueValidator(Decimal("0")),
+        ],
+    )
+
     purchase_item = models.ForeignKey(
         "purchases.PurchaseItem",
         on_delete=models.PROTECT,
@@ -124,7 +192,9 @@ class InventoryTransaction(models.Model):
         related_name="inventory_transactions_created",
     )
 
-    created_at = models.DateTimeField(auto_now_add=True)
+    created_at = models.DateTimeField(
+        auto_now_add=True,
+    )
 
     class Meta:
         ordering = ["-created_at"]
@@ -133,6 +203,14 @@ class InventoryTransaction(models.Model):
             models.CheckConstraint(
                 condition=~models.Q(quantity=0),
                 name="inventory_transaction_quantity_not_zero",
+            ),
+            models.CheckConstraint(
+                condition=models.Q(unit_cost__gte=0),
+                name="inventory_transaction_unit_cost_gte_zero",
+            ),
+            models.CheckConstraint(
+                condition=models.Q(total_cost__gte=0),
+                name="inventory_transaction_total_cost_gte_zero",
             ),
         ]
 

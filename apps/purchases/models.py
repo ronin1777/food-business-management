@@ -4,7 +4,7 @@ from django.core.exceptions import ValidationError
 from django.db import models
 
 from apps.inventory.models import Ingredient, IngredientUnitType
-
+from decimal import Decimal
 
 class Supplier(models.Model):
     organization = models.ForeignKey(
@@ -72,6 +72,9 @@ class Purchase(models.Model):
 
     def __str__(self) -> str:
         return f"Purchase #{self.pk}"
+
+
+    
 
 
 class PurchaseItem(models.Model):
@@ -219,3 +222,140 @@ class PurchaseAdditionalCost(models.Model):
 
     def __str__(self) -> str:
         return f"{self.cost_type} - {self.amount}"
+
+
+
+
+class SupplierPaymentMethod(models.TextChoices):
+    CASH = "cash", "نقدی"
+    CARD = "card", "کارت"
+    TRANSFER = "transfer", "انتقال بانکی"
+
+
+class SupplierPayment(models.Model):
+    organization = models.ForeignKey(
+        "organizations.Organization",
+        on_delete=models.CASCADE,
+        related_name="supplier_payments",
+    )
+
+    supplier = models.ForeignKey(
+        Supplier,
+        on_delete=models.PROTECT,
+        related_name="payments",
+    )
+
+    purchase = models.ForeignKey(
+        Purchase,
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        related_name="payments",
+    )
+
+    amount = models.DecimalField(
+        max_digits=14,
+        decimal_places=2,
+    )
+
+    method = models.CharField(
+        max_length=20,
+        choices=SupplierPaymentMethod.choices,
+    )
+
+    paid_at = models.DateTimeField()
+
+    note = models.TextField(
+        blank=True,
+    )
+
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-paid_at"]
+
+        constraints = [
+            models.CheckConstraint(
+                condition=models.Q(amount__gt=0),
+                name="supplier_payment_amount_gt_zero",
+            ),
+        ]
+
+    def __str__(self) -> str:
+        return f"{self.supplier} - {self.amount}"
+
+
+class SupplierTransactionType(models.TextChoices):
+    PURCHASE = "purchase", "خرید"
+    PAYMENT = "payment", "پرداخت"
+    REFUND = "refund", "برگشت خرید"
+    ADJUSTMENT = "adjustment", "اصلاح حساب"
+
+
+class AccountDirection(models.TextChoices):
+    DEBIT = "debit", "بدهکار"
+    CREDIT = "credit", "بستانکار"
+
+
+class SupplierTransaction(models.Model):
+    organization = models.ForeignKey(
+        "organizations.Organization",
+        on_delete=models.CASCADE,
+        related_name="supplier_transactions",
+    )
+
+    supplier = models.ForeignKey(
+        Supplier,
+        on_delete=models.PROTECT,
+        related_name="account_transactions",
+    )
+
+    transaction_type = models.CharField(
+        max_length=20,
+        choices=SupplierTransactionType.choices,
+    )
+
+    direction = models.CharField(
+        max_length=10,
+        choices=AccountDirection.choices,
+    )
+
+    amount = models.DecimalField(
+        max_digits=14,
+        decimal_places=2,
+    )
+
+    purchase = models.ForeignKey(
+        Purchase,
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        related_name="supplier_transactions",
+    )
+
+    payment = models.ForeignKey(
+        SupplierPayment,
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        related_name="account_transactions",
+    )
+
+    note = models.TextField(
+        blank=True,
+    )
+
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["created_at"]
+
+        constraints = [
+            models.CheckConstraint(
+                condition=models.Q(amount__gt=0),
+                name="supplier_transaction_amount_gt_zero",
+            ),
+        ]
+
+    def __str__(self) -> str:
+        return f"{self.supplier} - {self.transaction_type} - {self.amount}"

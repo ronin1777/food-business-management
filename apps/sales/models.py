@@ -1,5 +1,6 @@
 from django.db import models
-
+from django.conf import settings
+from django.db import models
 from decimal import Decimal
 
 from django.core.validators import MinValueValidator
@@ -192,3 +193,144 @@ class OrderItemIngredient(models.Model):
 
     def __str__(self) -> str:
         return f"{self.ingredient.name} - {self.quantity}"
+
+
+
+class CustomerPaymentMethod(models.TextChoices):
+    CASH = "cash", "نقدی"
+    CARD = "card", "کارت"
+    TRANSFER = "transfer", "انتقال بانکی"
+
+
+class CustomerPayment(models.Model):
+    organization = models.ForeignKey(
+        "organizations.Organization",
+        on_delete=models.CASCADE,
+        related_name="customer_payments",
+    )
+
+    customer = models.ForeignKey(
+        Customer,
+        on_delete=models.PROTECT,
+        related_name="payments",
+    )
+
+    order = models.ForeignKey(
+        Order,
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        related_name="customer_payments",
+    )
+
+    amount = models.DecimalField(
+        max_digits=14,
+        decimal_places=2,
+    )
+
+    method = models.CharField(
+        max_length=20,
+        choices=CustomerPaymentMethod.choices,
+    )
+
+    paid_at = models.DateTimeField()
+
+    note = models.TextField(
+        blank=True,
+    )
+
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-paid_at"]
+
+        constraints = [
+            models.CheckConstraint(
+                condition=models.Q(amount__gt=0),
+                name="customer_payment_amount_gt_zero",
+            ),
+        ]
+
+    def __str__(self) -> str:
+        return f"{self.customer} - {self.amount}"
+
+
+
+class CustomerTransactionType(models.TextChoices):
+    SALE = "sale", "فروش"
+    PAYMENT = "payment", "پرداخت"
+    REFUND = "refund", "برگشت وجه"
+    ADJUSTMENT = "adjustment", "اصلاح حساب"
+
+
+class CustomerAccountDirection(models.TextChoices):
+    DEBIT = "debit", "بدهکار"
+    CREDIT = "credit", "بستانکار"
+
+
+class CustomerTransaction(models.Model):
+    organization = models.ForeignKey(
+        "organizations.Organization",
+        on_delete=models.CASCADE,
+        related_name="customer_transactions",
+    )
+
+    customer = models.ForeignKey(
+        Customer,
+        on_delete=models.PROTECT,
+        related_name="account_transactions",
+    )
+
+    transaction_type = models.CharField(
+        max_length=20,
+        choices=CustomerTransactionType.choices,
+    )
+
+    direction = models.CharField(
+        max_length=10,
+        choices=CustomerAccountDirection.choices,
+    )
+
+    amount = models.DecimalField(
+        max_digits=14,
+        decimal_places=2,
+    )
+
+    order = models.ForeignKey(
+        Order,
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        related_name="customer_transactions",
+    )
+
+    payment = models.ForeignKey(
+        CustomerPayment,
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        related_name="account_transactions",
+    )
+
+    note = models.TextField(
+        blank=True,
+    )
+
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["created_at"]
+
+        constraints = [
+            models.CheckConstraint(
+                condition=models.Q(amount__gt=0),
+                name="customer_transaction_amount_gt_zero",
+            ),
+        ]
+
+    def __str__(self) -> str:
+        return (
+            f"{self.customer} - "
+            f"{self.transaction_type} - "
+            f"{self.amount}"
+        )

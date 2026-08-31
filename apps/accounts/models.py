@@ -3,14 +3,10 @@ from django.contrib.auth.models import AbstractUser
 
 class User(AbstractUser):
     """
-    Custom user model.
+    Custom user model for the application.
 
     Each user owns exactly one organization.
-    Organization relation is defined on Organization model
-    to keep the domain ownership explicit.
     """
 
-    email = None
-
-    def __str__(self):
+    def __str__(self) -> str:
         return self.username

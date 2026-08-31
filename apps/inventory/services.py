@@ -1,10 +1,28 @@
-from decimal import Decimal
+from decimal import Decimal, ROUND_HALF_UP
 from typing import NamedTuple
 
 from django.core.exceptions import ValidationError
 from django.db import transaction
 
 from .models import Ingredient
+
+
+MONEY_QUANTIZER = Decimal("0.01")
+UNIT_COST_QUANTIZER = Decimal("0.000001")
+
+
+def quantize_money(value: Decimal) -> Decimal:
+    return value.quantize(
+        MONEY_QUANTIZER,
+        rounding=ROUND_HALF_UP,
+    )
+
+
+def quantize_unit_cost(value: Decimal) -> Decimal:
+    return value.quantize(
+        UNIT_COST_QUANTIZER,
+        rounding=ROUND_HALF_UP,
+    )
 
 
 class StockDecreaseResult(NamedTuple):
@@ -38,11 +56,13 @@ class InventoryCostService:
             .get(pk=ingredient.pk)
         )
 
-        old_stock = ingredient.current_stock
-        old_value = ingredient.current_inventory_value
+        total_cost = quantize_money(total_cost)
 
-        new_stock = old_stock + quantity
-        new_value = old_value + total_cost
+        new_stock = ingredient.current_stock + quantity
+        new_value = (
+            ingredient.current_inventory_value
+            + total_cost
+        )
 
         ingredient.current_stock = new_stock
         ingredient.current_inventory_value = new_value
@@ -55,10 +75,8 @@ class InventoryCostService:
             ]
         )
 
-        return (
+        return quantize_unit_cost(
             new_value / new_stock
-            if new_stock > Decimal("0")
-            else Decimal("0")
         )
 
     @staticmethod
@@ -85,14 +103,25 @@ class InventoryCostService:
             )
 
         unit_cost = ingredient.average_unit_cost
-        total_cost = quantity * unit_cost
 
-        ingredient.current_stock -= quantity
-        ingredient.current_inventory_value -= total_cost
+        total_cost = quantize_money(
+            quantity * unit_cost
+        )
 
-        # Guard against tiny Decimal precision artifacts.
-        if ingredient.current_inventory_value < Decimal("0"):
-            ingredient.current_inventory_value = Decimal("0")
+        if total_cost > ingredient.current_inventory_value:
+            total_cost = ingredient.current_inventory_value
+
+        new_stock = ingredient.current_stock - quantity
+        new_value = (
+            ingredient.current_inventory_value
+            - total_cost
+        )
+
+        if new_stock == Decimal("0"):
+            new_value = Decimal("0")
+
+        ingredient.current_stock = new_stock
+        ingredient.current_inventory_value = new_value
 
         ingredient.save(
             update_fields=[
@@ -103,6 +132,8 @@ class InventoryCostService:
         )
 
         return StockDecreaseResult(
-            unit_cost=unit_cost,
+            unit_cost=quantize_unit_cost(unit_cost),
             total_cost=total_cost,
         )
+
+

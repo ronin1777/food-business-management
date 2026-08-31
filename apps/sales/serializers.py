@@ -1,4 +1,5 @@
 from decimal import Decimal
+from apps.products.models import Product
 
 from rest_framework import serializers
 
@@ -7,7 +8,6 @@ from .models import (
     CustomerPaymentMethod,
     Order,
 )
-
 
 
 class CustomerPaymentCreateSerializer(serializers.Serializer):
@@ -131,3 +131,81 @@ class CustomerAccountSerializer(serializers.Serializer):
             "id": customer.id,
             "name": customer.name,
         }
+
+
+
+class OrderItemCreateSerializer(serializers.Serializer):
+    product = serializers.PrimaryKeyRelatedField(
+        queryset=Product.objects.all(),
+    )
+
+    quantity = serializers.IntegerField(
+        min_value=1,
+    )
+
+    def validate_product(self, product: Product) -> Product:
+        request = self.context.get("request")
+
+        if request is None:
+            raise serializers.ValidationError(
+                "درخواست معتبر نیست."
+            )
+
+        if product.organization_id != request.user.organization.id:
+            raise serializers.ValidationError(
+                "این محصول متعلق به کسب‌وکار شما نیست."
+            )
+
+        if not product.is_active:
+            raise serializers.ValidationError(
+                "این محصول غیرفعال است."
+            )
+
+        return product
+
+
+class OrderCreateSerializer(serializers.Serializer):
+    customer = serializers.PrimaryKeyRelatedField(
+        queryset=Customer.objects.all(),
+        required=False,
+        allow_null=True,
+    )
+
+    ordered_at = serializers.DateTimeField()
+
+    items = OrderItemCreateSerializer(
+        many=True,
+        allow_empty=False,
+    )
+
+    note = serializers.CharField(
+        required=False,
+        allow_blank=True,
+        default="",
+    )
+
+    def validate_customer(
+        self,
+        customer: Customer | None,
+    ) -> Customer | None:
+        if customer is None:
+            return None
+
+        request = self.context.get("request")
+
+        if request is None:
+            raise serializers.ValidationError(
+                "درخواست معتبر نیست."
+            )
+
+        if customer.organization_id != request.user.organization.id:
+            raise serializers.ValidationError(
+                "این مشتری متعلق به کسب‌وکار شما نیست."
+            )
+
+        if not customer.is_active:
+            raise serializers.ValidationError(
+                "این مشتری غیرفعال است."
+            )
+
+        return customer

@@ -42,6 +42,11 @@ class OrderStatus(models.TextChoices):
     COMPLETED = "completed", "ثبت شده"
     CANCELLED = "cancelled", "لغو شده"
 
+class OrderPaymentStatus(models.TextChoices):
+    UNPAID = "unpaid", "پرداخت نشده"
+    PARTIALLY_PAID = "partially_paid", "نیمه پرداخت"
+    PAID = "paid", "پرداخت شده"
+
 
 class Order(models.Model):
     organization = models.ForeignKey(
@@ -49,6 +54,12 @@ class Order(models.Model):
         on_delete=models.CASCADE,
         related_name="orders",
     )
+
+    payment_status = models.CharField(
+    max_length=20,
+    choices=OrderPaymentStatus.choices,
+    default=OrderPaymentStatus.UNPAID,
+)
 
     customer = models.ForeignKey(
         "sales.Customer",

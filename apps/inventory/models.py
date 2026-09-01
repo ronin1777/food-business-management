@@ -62,6 +62,11 @@ class Ingredient(models.Model):
             MinValueValidator(Decimal("0")),
         ],
     )
+    minimum_stock = models.DecimalField(
+    max_digits=14,
+    decimal_places=3,
+    default=Decimal("0"),
+)
 
     is_active = models.BooleanField(
         default=True,

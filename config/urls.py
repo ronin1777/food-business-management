@@ -41,4 +41,12 @@ path(
     "api/",
     include("apps.organizations.urls"),
 ),
+path(
+    "api/",
+    include("apps.reports.urls"),
+),
+path(
+    "api/",
+    include("apps.dashboard.urls"),
+),
 ]

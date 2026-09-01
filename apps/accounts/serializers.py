@@ -1,4 +1,5 @@
 from django.contrib.auth import get_user_model
+
 from rest_framework import serializers
 
 from apps.organizations.models import Organization
@@ -93,3 +94,30 @@ class LoginSerializer(
             "input_type": "password",
         },
     )
+
+
+class UserSerializer(
+    serializers.ModelSerializer,
+):
+    organization = serializers.SerializerMethodField()
+
+    class Meta:
+        model = User
+        fields = (
+            "id",
+            "username",
+            "email",
+            "organization",
+        )
+        read_only_fields = fields
+
+    def get_organization(
+        self,
+        obj: User,
+    ) -> dict[str, int | str]:
+        organization = obj.organization
+
+        return {
+            "id": organization.id,
+            "name": organization.name,
+        }

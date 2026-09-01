@@ -36,4 +36,24 @@ urlpatterns = [
         ),
         name="refresh",
     ),
+
+    path(
+        "logout/",
+        auth_view(
+            {
+                "post": "logout",
+            }
+        ),
+        name="logout",
+    ),
+
+    path(
+        "me/",
+        auth_view(
+            {
+                "get": "me",
+            }
+        ),
+        name="me",
+    ),
 ]

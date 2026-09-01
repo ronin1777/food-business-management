@@ -2,7 +2,10 @@ from django.contrib.auth import authenticate
 from django.db import transaction
 
 from rest_framework import status, viewsets
-from rest_framework.permissions import AllowAny
+from rest_framework.permissions import (
+    AllowAny,
+    IsAuthenticated,
+)
 from rest_framework.request import Request
 from rest_framework.response import Response
 
@@ -18,13 +21,23 @@ from apps.core.responses import APIResponse
 from .serializers import (
     LoginSerializer,
     RegisterSerializer,
+    UserSerializer,
 )
 
 
 class AuthViewSet(
     viewsets.GenericViewSet,
 ):
-    permission_classes = [AllowAny]
+    def get_permissions(self):
+        if self.action in {
+            "register",
+            "login",
+            "refresh",
+            "logout",
+        }:
+            return [AllowAny()]
+
+        return [IsAuthenticated()]
 
     def register(
         self,
@@ -223,3 +236,57 @@ class AuthViewSet(
         )
 
         return response
+
+    def logout(
+        self,
+        request: Request,
+        *args,
+        **kwargs,
+    ) -> Response:
+        refresh_token = request.COOKIES.get(
+            "refresh_token",
+        )
+
+        if refresh_token:
+            try:
+                refresh = RefreshToken(
+                    refresh_token,
+                )
+
+                refresh.blacklist()
+
+            except TokenError:
+                pass
+
+        response = APIResponse.success(
+            data=None,
+            message="با موفقیت خارج شدید.",
+        )
+
+        response.delete_cookie(
+            key="access_token",
+            path="/",
+        )
+
+        response.delete_cookie(
+            key="refresh_token",
+            path="/api/auth/",
+        )
+
+        return response
+
+    def me(
+        self,
+        request: Request,
+        *args,
+        **kwargs,
+    ) -> Response:
+        serializer = UserSerializer(
+            request.user,
+        )
+
+        return APIResponse.success(
+            data={
+                "user": serializer.data,
+            },
+        )

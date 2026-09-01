@@ -4,10 +4,10 @@ from typing import Any
 from django.db.models import F, Sum
 
 from apps.purchases.models import (
+    AccountDirection,
     Supplier,
     SupplierTransaction,
     SupplierTransactionType,
-    AccountDirection,
 )
 
 
@@ -70,8 +70,10 @@ class SupplierReportService:
         supplier_balances = []
 
         for supplier in suppliers:
-            transactions = supplier_transactions.filter(
-                supplier=supplier,
+            transactions = (
+                supplier_transactions.filter(
+                    supplier=supplier,
+                )
             )
 
             debit = (
@@ -130,9 +132,9 @@ class SupplierReportService:
                 direction=AccountDirection.CREDIT,
             )
             .values(
-                supplier_id=F("supplier_id"),
+                "supplier_id",
                 supplier_name=F(
-                    "supplier__name"
+                    "supplier__name",
                 ),
             )
             .annotate(

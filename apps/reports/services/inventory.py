@@ -50,7 +50,7 @@ class InventoryReportService:
         inventory_by_unit_type = (
             ingredients
             .values(
-                unit_type=F("unit_type"),
+                "unit_type",
             )
             .annotate(
                 ingredient_count=Count("id"),

@@ -269,6 +269,12 @@ class DashboardService:
                     ]
                 ),
 
+                "low_stock_count": (
+                    inventory_summary[
+                        "low_stock_count"
+                    ]
+                ),
+
                 "ingredients": (
                     inventory_report[
                         "ingredients"

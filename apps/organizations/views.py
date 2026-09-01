@@ -20,7 +20,7 @@ class OrganizationViewSet(
 
     def get_queryset(self):
         return Organization.objects.filter(
-            pk=self.request.user.organization_id,
+            pk=self.request.user.organization.id,
         )
 
     def retrieve(

@@ -13,6 +13,7 @@ from .services.summary import DashboardService
 class DashboardViewSet(
     viewsets.GenericViewSet,
 ):
+    serializer_class = DashboardSerializer
     permission_classes = [IsAuthenticated]
 
     def list(
@@ -38,8 +39,8 @@ class DashboardViewSet(
 
         dashboard = DashboardService.get_summary(
             organization_id=(
-                request.user.organization_id
-            ),
+    request.user.organization.id
+),
             **period_serializer.validated_data,
         )
 

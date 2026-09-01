@@ -153,13 +153,11 @@ class PurchaseReportService:
                 purchase__status=PurchaseStatus.COMPLETED,
             )
             .values(
-                ingredient_id=F(
-                    "ingredient_id",
-                ),
-                ingredient_name=F(
-                    "ingredient__name",
-                ),
-            )
+    "ingredient_id",
+    ingredient_name=F(
+        "ingredient__name",
+    ),
+)
             .annotate(
                 quantity_purchased=Sum(
                     "base_quantity",

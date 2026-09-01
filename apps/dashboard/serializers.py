@@ -50,7 +50,7 @@ class DashboardKPISerializer(
 
     gross_margin = serializers.DictField()
 
-    orders = serializers.IntegerField()
+    orders = serializers.DictField()
 
     receivables = serializers.DictField()
 

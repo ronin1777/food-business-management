@@ -105,7 +105,6 @@ class RecipeListSerializer(serializers.ModelSerializer):
             "valid_to",
             "is_active",
             "created_at",
-            "updated_at",
         )
         read_only_fields = fields
 
@@ -150,7 +149,7 @@ class RecipeItemDetailSerializer(serializers.ModelSerializer):
             "quantity",
             "unit",
             "base_quantity",
-            "created_at",
+
         )
         read_only_fields = fields
 
@@ -177,7 +176,6 @@ class RecipeDetailSerializer(serializers.ModelSerializer):
             "valid_to",
             "is_active",
             "items",
-            "created_at",
-            "updated_at",
+
         )
         read_only_fields = fields

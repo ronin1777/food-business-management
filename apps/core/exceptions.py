@@ -1,3 +1,4 @@
+import logging
 from typing import Any
 
 from django.core.exceptions import (
@@ -10,6 +11,9 @@ from rest_framework.exceptions import (
 )
 from rest_framework.response import Response
 from rest_framework.views import exception_handler
+
+
+logger = logging.getLogger(__name__)
 
 
 def _normalize_django_validation_error(
@@ -31,8 +35,13 @@ def custom_exception_handler(
     # Django ValidationError
     # --------------------------------------------------------
 
-    if isinstance(exc, DjangoValidationError):
-        errors = _normalize_django_validation_error(exc)
+    if isinstance(
+        exc,
+        DjangoValidationError,
+    ):
+        errors = _normalize_django_validation_error(
+            exc,
+        )
 
         return Response(
             {
@@ -84,13 +93,16 @@ def custom_exception_handler(
     # Unexpected server error
     # --------------------------------------------------------
 
+    logger.exception(
+        "Unhandled exception",
+        exc_info=exc,
+    )
+
     return Response(
         {
             "success": False,
             "data": None,
-            "message": (
-                "خطای داخلی سرور رخ داده است."
-            ),
+            "message": "خطای داخلی سرور رخ داده است.",
             "errors": None,
         },
         status=status.HTTP_500_INTERNAL_SERVER_ERROR,

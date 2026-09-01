@@ -143,23 +143,23 @@ class SalesReportService:
         )
 
         top_products = (
-            OrderItem.objects
-            .filter(
-                order__organization_id=organization_id,
-                order__ordered_at__date__gte=current_from,
-                order__ordered_at__date__lte=current_to,
-                order__status=OrderStatus.COMPLETED,
-            )
-            .values(
-                product_id=F("product_id"),
-                product_name=F("product__name"),
-            )
-            .annotate(
-                quantity_sold=Sum("quantity"),
-                sales=Sum("total_price"),
-            )
-            .order_by("-sales")[:10]
-        )
+    OrderItem.objects
+    .filter(
+        order__organization_id=organization_id,
+        order__ordered_at__date__gte=current_from,
+        order__ordered_at__date__lte=current_to,
+        order__status=OrderStatus.COMPLETED,
+    )
+    .values(
+        "product_id",
+        product_name=F("product__name"),
+    )
+    .annotate(
+        quantity_sold=Sum("quantity"),
+        sales=Sum("total_price"),
+    )
+    .order_by("-sales")[:10]
+)
 
         return {
             "period": periods,

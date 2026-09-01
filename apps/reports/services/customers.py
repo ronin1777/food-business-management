@@ -4,7 +4,6 @@ from typing import Any
 from django.db.models import (
     Count,
     F,
-    Q,
     Sum,
 )
 
@@ -160,7 +159,7 @@ class CustomerReportService:
                 ),
             )
             .values(
-                customer_id=F("customer_id"),
+                "customer_id",
                 customer_name=F(
                     "customer__name"
                 ),

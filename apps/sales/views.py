@@ -21,6 +21,7 @@ from .serializers import (
     CustomerAccountSerializer,
     CustomerCreateSerializer,
     CustomerDetailSerializer,
+    CustomerUpdateSerializer,
     CustomerListSerializer,
     CustomerPaymentCreateSerializer,
     CustomerRefundCreateSerializer,
@@ -28,6 +29,7 @@ from .serializers import (
     OrderCreateSerializer,
     OrderDetailSerializer,
     OrderListSerializer,
+    
 )
 from .services import (
     CustomerAccountService,
@@ -83,6 +85,8 @@ class CustomerPaymentViewSet(
 class CustomerAccountViewSet(
     viewsets.GenericViewSet,
 ):
+
+    serializer_class = CustomerAccountSerializer
     permission_classes = [IsAuthenticated]
 
     def retrieve(

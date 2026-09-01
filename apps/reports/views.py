@@ -62,7 +62,7 @@ class SalesReportViewSet(
 
         data = SalesReportService.get_report(
             organization_id=(
-                request.user.organization_id
+                request.user.organization.id
             ),
             **period_serializer.validated_data,
         )
@@ -106,7 +106,7 @@ class PurchaseReportViewSet(
 
         report = PurchaseReportService.get_report(
             organization_id=(
-                request.user.organization_id
+                request.user.organization.id
             ),
             **period_serializer.validated_data,
         )
@@ -149,7 +149,7 @@ class ProfitabilityReportViewSet(
 
         report = ProfitabilityReportService.get_report(
             organization_id=(
-                request.user.organization_id
+                request.user.organization.id
             ),
             **period_serializer.validated_data,
         )
@@ -178,7 +178,7 @@ class InventoryReportViewSet(
     ) -> Response:
         report = InventoryReportService.get_report(
             organization_id=(
-                request.user.organization_id
+                request.user.organization.id
             ),
         )
 
@@ -205,7 +205,7 @@ class CustomerReportViewSet(
     ) -> Response:
         report = CustomerReportService.get_report(
             organization_id=(
-                request.user.organization_id
+                request.user.organization.id
             ),
         )
 
@@ -232,7 +232,7 @@ class SupplierReportViewSet(
     ) -> Response:
         report = SupplierReportService.get_report(
             organization_id=(
-                request.user.organization_id
+                request.user.organization.id
             ),
         )
 

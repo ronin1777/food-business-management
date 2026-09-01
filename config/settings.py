@@ -42,6 +42,9 @@ INSTALLED_APPS = [
     # Third-party
     "rest_framework",
     "django_filters",
+    "drf_spectacular",
+    "rest_framework_simplejwt.token_blacklist",
+
 
     # Local apps
     "apps.accounts",
@@ -148,24 +151,59 @@ AUTH_USER_MODEL = "accounts.User"
 
 REST_FRAMEWORK = {
     "DEFAULT_AUTHENTICATION_CLASSES": [
-        "rest_framework.authentication.SessionAuthentication",
+        "apps.accounts.authentication.CookieJWTAuthentication",
     ],
+
     "DEFAULT_PERMISSION_CLASSES": [
         "rest_framework.permissions.IsAuthenticated",
     ],
-    "DEFAULT_PAGINATION_CLASS": (
-            "apps.core.pagination.StandardPageNumberPagination"
 
+    "DEFAULT_PAGINATION_CLASS": (
+        "apps.core.pagination.StandardPageNumberPagination"
     ),
+
     "PAGE_SIZE": 20,
+
     "DEFAULT_FILTER_BACKENDS": [
+        "django_filters.rest_framework.DjangoFilterBackend",
         "rest_framework.filters.SearchFilter",
         "rest_framework.filters.OrderingFilter",
     ],
 
-    "DEFAULT_FILTER_BACKENDS": [
-    "django_filters.rest_framework.DjangoFilterBackend",
-    "rest_framework.filters.SearchFilter",
-    "rest_framework.filters.OrderingFilter",
-],
+    "DEFAULT_SCHEMA_CLASS": (
+        "drf_spectacular.openapi.AutoSchema"
+    ),
+
+    "EXCEPTION_HANDLER": (
+        "apps.core.exceptions.custom_exception_handler"
+    ),
+}
+
+
+
+from datetime import timedelta
+
+SIMPLE_JWT = {
+    "ACCESS_TOKEN_LIFETIME": timedelta(
+        minutes=1,
+    ),
+    "REFRESH_TOKEN_LIFETIME": timedelta(
+        days=7,
+    ),
+    "ROTATE_REFRESH_TOKENS": False,
+    "BLACKLIST_AFTER_ROTATION": False,
+}
+
+
+
+
+SPECTACULAR_SETTINGS = {
+    "TITLE": "Business Management API",
+    "DESCRIPTION": (
+        "Backend API for business management, "
+        "inventory, sales, purchases, customers, "
+        "suppliers, and analytics."
+    ),
+    "VERSION": "1.0.0",
+    "SERVE_INCLUDE_SCHEMA": False,
 }

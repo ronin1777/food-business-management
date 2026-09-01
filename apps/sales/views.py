@@ -3,12 +3,16 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.request import Request
 from rest_framework.response import Response
 from django.shortcuts import get_object_or_404
+
+from apps.core.responses import APIResponse
 from .models import Customer, CustomerTransaction, Order
 from .services import (
     CustomerAccountService,
     CustomerPaymentService,
     OrderService,
 )
+from django.core.exceptions import ValidationError
+
 from .filters import (
     CustomerTransactionFilter,
     OrderFilter,
@@ -19,6 +23,7 @@ from .serializers import (
     CustomerDetailSerializer,
     CustomerListSerializer,
     CustomerPaymentCreateSerializer,
+    CustomerRefundCreateSerializer,
     CustomerTransactionSerializer,
     OrderCreateSerializer,
     OrderDetailSerializer,
@@ -55,24 +60,29 @@ class CustomerPaymentViewSet(
         serializer = self.get_serializer(
             data=request.data,
         )
-        serializer.is_valid(raise_exception=True)
+
+        serializer.is_valid(
+            raise_exception=True,
+        )
 
         payment = CustomerPaymentService.create_payment(
             organization=request.user.organization,
             **serializer.validated_data,
         )
 
-        return Response(
-            {
+        return APIResponse.success(
+            data={
                 "id": payment.id,
-                "message": "پرداخت مشتری با موفقیت ثبت شد.",
             },
-            status=status.HTTP_201_CREATED,
+            message="پرداخت مشتری با موفقیت ثبت شد.",
+            status_code=status.HTTP_201_CREATED,
         )
 
 
 
-class CustomerAccountViewSet(viewsets.GenericViewSet):
+class CustomerAccountViewSet(
+    viewsets.GenericViewSet,
+):
     permission_classes = [IsAuthenticated]
 
     def retrieve(
@@ -95,7 +105,9 @@ class CustomerAccountViewSet(viewsets.GenericViewSet):
 
         serializer = CustomerAccountSerializer(account)
 
-        return Response(serializer.data)
+        return APIResponse.success(
+            data=serializer.data,
+        )
 
 
 class OrderViewSet(
@@ -201,7 +213,6 @@ class OrderViewSet(
             },
             status=status.HTTP_200_OK,
         )
-
 
 
 class CustomerViewSet(
@@ -356,4 +367,38 @@ class CustomerTransactionViewSet(
 
 
 
-    
+
+class CustomerRefundViewSet(
+    mixins.CreateModelMixin,
+    viewsets.GenericViewSet,
+):
+    permission_classes = [IsAuthenticated]
+
+    serializer_class = CustomerRefundCreateSerializer
+
+    def create(
+        self,
+        request: Request,
+        *args,
+        **kwargs,
+    ) -> Response:
+        serializer = self.get_serializer(
+            data=request.data,
+        )
+
+        serializer.is_valid(
+            raise_exception=True,
+        )
+
+        refund = CustomerRefundService.create_refund(
+            organization=request.user.organization,
+            **serializer.validated_data,
+        )
+
+        return APIResponse.success(
+            data={
+                "id": refund.id,
+            },
+            message="برگشت وجه با موفقیت ثبت شد.",
+            status_code=status.HTTP_201_CREATED,
+        )

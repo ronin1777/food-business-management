@@ -660,3 +660,132 @@ class CustomerTransactionReversalService:
             reverses=transaction,
             note=note,
         )
+
+
+
+class CustomerRefundService:
+    @staticmethod
+    @transaction.atomic
+    def create_refund(
+        *,
+        organization: Organization,
+        customer: Customer,
+        amount: Decimal,
+        order: Order,
+        note: str = "",
+    ) -> CustomerTransaction:
+        if amount <= Decimal("0"):
+            raise ValidationError(
+                {
+                    "amount": (
+                        "مبلغ برگشت وجه باید بیشتر از صفر باشد."
+                    )
+                }
+            )
+
+        if customer.organization_id != organization.id:
+            raise ValidationError(
+                {
+                    "customer": (
+                        "این مشتری متعلق به "
+                        "کسب‌وکار شما نیست."
+                    )
+                }
+            )
+
+        if not customer.is_active:
+            raise ValidationError(
+                {
+                    "customer": (
+                        "این مشتری غیرفعال است."
+                    )
+                }
+            )
+
+        if order.organization_id != organization.id:
+            raise ValidationError(
+                {
+                    "order": (
+                        "این سفارش متعلق به "
+                        "کسب‌وکار شما نیست."
+                    )
+                }
+            )
+
+        if order.customer_id != customer.id:
+            raise ValidationError(
+                {
+                    "order": (
+                        "این سفارش متعلق به "
+                        "مشتری انتخاب‌شده نیست."
+                    )
+                }
+            )
+
+        if order.status != OrderStatus.CANCELLED:
+            raise ValidationError(
+                {
+                    "order": (
+                        "فقط سفارش لغوشده قابل برگشت وجه است."
+                    )
+                }
+            )
+
+        paid_amount = (
+            CustomerPayment.objects
+            .filter(
+                organization=organization,
+                customer=customer,
+                order=order,
+            )
+            .aggregate(
+                total=Sum("amount"),
+            )
+            .get("total")
+            or Decimal("0")
+        )
+
+        refunded_amount = (
+            CustomerTransaction.objects
+            .filter(
+                organization=organization,
+                customer=customer,
+                order=order,
+                transaction_type=(
+                    CustomerTransactionType.REFUND
+                ),
+            )
+            .aggregate(
+                total=Sum("amount"),
+            )
+            .get("total")
+            or Decimal("0")
+        )
+
+        refundable_amount = (
+            paid_amount - refunded_amount
+        )
+
+        if amount > refundable_amount:
+            raise ValidationError(
+                {
+                    "amount": (
+                        "مبلغ برگشت وجه نمی‌تواند "
+                        "از مبلغ قابل برگشت بیشتر باشد."
+                    )
+                }
+            )
+
+        return CustomerTransaction.objects.create(
+            organization=organization,
+            customer=customer,
+            transaction_type=(
+                CustomerTransactionType.REFUND
+            ),
+            direction=(
+                CustomerAccountDirection.DEBIT
+            ),
+            amount=amount,
+            order=order,
+            note=note,
+        )

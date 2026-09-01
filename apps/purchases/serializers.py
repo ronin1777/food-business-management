@@ -461,3 +461,194 @@ class SupplierTransactionSerializer(
             "created_at",
         )
         read_only_fields = fields
+
+
+
+
+class SupplierPaymentCreateSerializer(serializers.Serializer):
+    supplier = serializers.PrimaryKeyRelatedField(
+        queryset=Supplier.objects.all(),
+    )
+
+    purchase = serializers.PrimaryKeyRelatedField(
+        queryset=Purchase.objects.all(),
+        required=False,
+        allow_null=True,
+    )
+
+    amount = serializers.DecimalField(
+        max_digits=14,
+        decimal_places=2,
+        min_value=Decimal("0.01"),
+    )
+
+    method = serializers.ChoiceField(
+        choices=SupplierPaymentMethod.choices,
+    )
+
+    paid_at = serializers.DateTimeField()
+
+    note = serializers.CharField(
+        required=False,
+        allow_blank=True,
+        default="",
+    )
+
+    def validate_supplier(
+        self,
+        supplier: Supplier,
+    ) -> Supplier:
+        request = self.context.get("request")
+
+        if request is None:
+            raise serializers.ValidationError(
+                "درخواست معتبر نیست."
+            )
+
+        if (
+            supplier.organization_id
+            != request.user.organization.id
+        ):
+            raise serializers.ValidationError(
+                "این تأمین‌کننده متعلق به کسب‌وکار شما نیست."
+            )
+
+        if not supplier.is_active:
+            raise serializers.ValidationError(
+                "این تأمین‌کننده غیرفعال است."
+            )
+
+        return supplier
+
+    def validate_purchase(
+        self,
+        purchase: Purchase | None,
+    ) -> Purchase | None:
+        if purchase is None:
+            return None
+
+        request = self.context.get("request")
+
+        if request is None:
+            raise serializers.ValidationError(
+                "درخواست معتبر نیست."
+            )
+
+        if (
+            purchase.organization_id
+            != request.user.organization.id
+        ):
+            raise serializers.ValidationError(
+                "این خرید متعلق به کسب‌وکار شما نیست."
+            )
+
+        return purchase
+
+    def validate(self, attrs):
+        supplier = attrs["supplier"]
+        purchase = attrs.get("purchase")
+
+        if (
+            purchase is not None
+            and purchase.supplier_id != supplier.id
+        ):
+            raise serializers.ValidationError(
+                {
+                    "purchase": (
+                        "این خرید متعلق به "
+                        "تأمین‌کننده انتخاب‌شده نیست."
+                    )
+                }
+            )
+
+        return attrs
+
+
+
+class SupplierRefundCreateSerializer(
+    serializers.Serializer,
+):
+    supplier = serializers.PrimaryKeyRelatedField(
+        queryset=Supplier.objects.all(),
+    )
+
+    purchase = serializers.PrimaryKeyRelatedField(
+        queryset=Purchase.objects.all(),
+    )
+
+    amount = serializers.DecimalField(
+        max_digits=14,
+        decimal_places=2,
+        min_value=Decimal("0.01"),
+    )
+
+    note = serializers.CharField(
+        required=False,
+        allow_blank=True,
+        default="",
+    )
+
+    def validate_supplier(
+        self,
+        supplier: Supplier,
+    ) -> Supplier:
+        request = self.context.get("request")
+
+        if request is None:
+            raise serializers.ValidationError(
+                "درخواست معتبر نیست."
+            )
+
+        if (
+            supplier.organization_id
+            != request.user.organization.id
+        ):
+            raise serializers.ValidationError(
+                "این تأمین‌کننده متعلق به "
+                "کسب‌وکار شما نیست."
+            )
+
+        if not supplier.is_active:
+            raise serializers.ValidationError(
+                "این تأمین‌کننده غیرفعال است."
+            )
+
+        return supplier
+
+    def validate_purchase(
+        self,
+        purchase: Purchase,
+    ) -> Purchase:
+        request = self.context.get("request")
+
+        if request is None:
+            raise serializers.ValidationError(
+                "درخواست معتبر نیست."
+            )
+
+        if (
+            purchase.organization_id
+            != request.user.organization.id
+        ):
+            raise serializers.ValidationError(
+                "این خرید متعلق به "
+                "کسب‌وکار شما نیست."
+            )
+
+        return purchase
+
+    def validate(self, attrs):
+        supplier = attrs["supplier"]
+        purchase = attrs["purchase"]
+
+        if purchase.supplier_id != supplier.id:
+            raise serializers.ValidationError(
+                {
+                    "purchase": (
+                        "این خرید متعلق به "
+                        "تأمین‌کننده انتخاب‌شده نیست."
+                    )
+                }
+            )
+
+        return attrs

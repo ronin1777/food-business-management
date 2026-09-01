@@ -42,6 +42,10 @@ class Supplier(models.Model):
     def __str__(self) -> str:
         return self.name
 
+class PurchaseStatus(models.TextChoices):
+    COMPLETED = "completed", "ثبت شده"
+    CANCELLED = "cancelled", "لغو شده"
+
 
 class Purchase(models.Model):
     organization = models.ForeignKey(
@@ -57,6 +61,12 @@ class Purchase(models.Model):
         blank=True,
         related_name="purchases",
     )
+
+    status = models.CharField(
+    max_length=20,
+    choices=PurchaseStatus.choices,
+    default=PurchaseStatus.COMPLETED,
+)
 
     purchased_at = models.DateTimeField()
 

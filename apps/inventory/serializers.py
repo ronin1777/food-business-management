@@ -1,3 +1,5 @@
+from decimal import Decimal
+
 from rest_framework import serializers
 
 from .models import (
@@ -157,3 +159,51 @@ class InventoryTransactionDetailSerializer(
             "created_at",
         )
         read_only_fields = fields
+
+
+
+class InventoryAdjustmentCreateSerializer(
+    serializers.Serializer,
+):
+    ingredient = serializers.PrimaryKeyRelatedField(
+        queryset=Ingredient.objects.all(),
+    )
+
+    quantity = serializers.DecimalField(
+        max_digits=14,
+        decimal_places=3,
+    )
+
+    unit_cost = serializers.DecimalField(
+        max_digits=14,
+        decimal_places=6,
+        required=False,
+        allow_null=True,
+        min_value=Decimal("0"),
+    )
+
+    note = serializers.CharField(
+        required=False,
+        allow_blank=True,
+        default="",
+    )
+
+
+class InventoryWasteCreateSerializer(
+    serializers.Serializer,
+):
+    ingredient = serializers.PrimaryKeyRelatedField(
+        queryset=Ingredient.objects.all(),
+    )
+
+    quantity = serializers.DecimalField(
+        max_digits=14,
+        decimal_places=3,
+        min_value=Decimal("0.001"),
+    )
+
+    note = serializers.CharField(
+        required=False,
+        allow_blank=True,
+        default="",
+    )

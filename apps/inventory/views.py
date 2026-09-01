@@ -10,10 +10,19 @@ from .serializers import (
     IngredientDetailSerializer,
     IngredientListSerializer,
     IngredientUpdateSerializer,
+    InventoryAdjustmentCreateSerializer,
     InventoryTransactionDetailSerializer,
     InventoryTransactionListSerializer,
+    InventoryWasteCreateSerializer,
 )
-from .services import IngredientService
+from .services import (
+    IngredientService,
+    InventoryAdjustmentService,
+    InventoryCostService,
+    InventoryWasteService,
+)
+
+from apps.core.responses import APIResponse
 
 
 
@@ -81,9 +90,10 @@ class IngredientViewSet(
             ingredient,
         )
 
-        return Response(
-            response_serializer.data,
-            status=status.HTTP_201_CREATED,
+        return APIResponse.success(
+            data=response_serializer.data,
+            message="ماده اولیه با موفقیت ایجاد شد.",
+            status_code=status.HTTP_201_CREATED,
         )
 
     def update(
@@ -119,9 +129,13 @@ class IngredientViewSet(
             ingredient,
         )
 
-        return Response(
-            response_serializer.data,
+        return APIResponse.success(
+            data=response_serializer.data,
+            message="ماده اولیه با موفقیت به‌روزرسانی شد.",
         )
+
+
+    
 
 
 class InventoryTransactionViewSet(
@@ -167,3 +181,83 @@ class InventoryTransactionViewSet(
             return InventoryTransactionDetailSerializer
 
         return InventoryTransactionListSerializer
+
+
+    
+
+
+
+class InventoryAdjustmentViewSet(
+    mixins.CreateModelMixin,
+    viewsets.GenericViewSet,
+):
+    permission_classes = [IsAuthenticated]
+
+    serializer_class = InventoryAdjustmentCreateSerializer
+
+    def create(
+        self,
+        request: Request,
+        *args,
+        **kwargs,
+    ) -> Response:
+        serializer = self.get_serializer(
+            data=request.data,
+        )
+
+        serializer.is_valid(
+            raise_exception=True,
+        )
+
+        adjustment = (
+            InventoryAdjustmentService.adjust_stock(
+                organization=(
+                    request.user.organization
+                ),
+                **serializer.validated_data,
+            )
+        )
+
+        return APIResponse.success(
+            data={
+                "id": adjustment.id,
+            },
+            message="اصلاح موجودی با موفقیت ثبت شد.",
+            status_code=status.HTTP_201_CREATED,
+        )
+
+
+class InventoryWasteViewSet(
+    mixins.CreateModelMixin,
+    viewsets.GenericViewSet,
+):
+    permission_classes = [IsAuthenticated]
+
+    serializer_class = InventoryWasteCreateSerializer
+
+    def create(
+        self,
+        request: Request,
+        *args,
+        **kwargs,
+    ) -> Response:
+        serializer = self.get_serializer(
+            data=request.data,
+        )
+
+        serializer.is_valid(
+            raise_exception=True,
+        )
+
+        waste = InventoryWasteService.record_waste(
+            organization=request.user.organization,
+            **serializer.validated_data,
+        )
+
+        return APIResponse.success(
+            data={
+                "id": waste.id,
+            },
+            message="دورریز با موفقیت ثبت شد.",
+            status_code=status.HTTP_201_CREATED,
+        )

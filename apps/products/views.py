@@ -80,9 +80,10 @@ class ProductViewSet(
             product,
         )
 
-        return Response(
-            response_serializer.data,
-            status=status.HTTP_201_CREATED,
+        return APIResponse.success(
+            data=response_serializer.data,
+            message="محصول با موفقیت ایجاد شد.",
+            status_code=status.HTTP_201_CREATED,
         )
 
     def update(
@@ -118,10 +119,10 @@ class ProductViewSet(
             product,
         )
 
-        return Response(
-            response_serializer.data,
+        return APIResponse.success(
+            data=response_serializer.data,
+            message="محصول با موفقیت به‌روزرسانی شد.",
         )
-
 
 class RecipeViewSet(
     mixins.CreateModelMixin,
@@ -187,7 +188,10 @@ class RecipeViewSet(
             **serializer.validated_data,
         )
 
-        return Response(
-            RecipeDetailSerializer(recipe).data,
-            status=status.HTTP_201_CREATED,
+        return APIResponse.success(
+            data=RecipeDetailSerializer(
+                recipe,
+            ).data,
+            message="دستور تهیه با موفقیت ایجاد شد.",
+            status_code=status.HTTP_201_CREATED,
         )

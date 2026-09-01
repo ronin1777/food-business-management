@@ -4,6 +4,7 @@ from .views import (
     PurchaseViewSet,
     SupplierAccountViewSet,
     SupplierPaymentViewSet,
+    SupplierRefundViewSet,
     SupplierTransactionViewSet,
     SupplierViewSet,
 )
@@ -42,5 +43,10 @@ router.register(
     basename="supplier-transaction",
 )
 
+router.register(
+    "supplier-refunds",
+    SupplierRefundViewSet,
+    basename="supplier-refund",
+)
 
 urlpatterns = router.urls

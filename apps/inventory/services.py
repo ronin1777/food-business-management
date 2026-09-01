@@ -332,3 +332,203 @@ class InventoryReversalService:
             created_by=created_by,
             note=note,
         )
+
+
+class InventoryAdjustmentService:
+    @staticmethod
+    @transaction.atomic
+    def adjust_stock(
+        *,
+        organization: Organization,
+        ingredient: Ingredient,
+        quantity: Decimal,
+        unit_cost: Decimal | None = None,
+        note: str = "",
+    ) -> InventoryTransaction:
+        if ingredient.organization_id != organization.id:
+            raise ValidationError(
+                {
+                    "ingredient": (
+                        "این ماده اولیه متعلق به "
+                        "کسب‌وکار شما نیست."
+                    )
+                }
+            )
+
+        if not ingredient.is_active:
+            raise ValidationError(
+                {
+                    "ingredient": (
+                        "این ماده اولیه غیرفعال است."
+                    )
+                }
+            )
+
+        if quantity == Decimal("0"):
+            raise ValidationError(
+                {
+                    "quantity": (
+                        "مقدار اصلاح موجودی نمی‌تواند صفر باشد."
+                    )
+                }
+            )
+
+        ingredient = (
+            Ingredient.objects
+            .select_for_update()
+            .get(pk=ingredient.pk)
+        )
+
+        if quantity > Decimal("0"):
+            if unit_cost is None:
+                raise ValidationError(
+                    {
+                        "unit_cost": (
+                            "برای افزایش موجودی، "
+                            "هزینه واحد الزامی است."
+                        )
+                    }
+                )
+
+            if unit_cost < Decimal("0"):
+                raise ValidationError(
+                    {
+                        "unit_cost": (
+                            "هزینه واحد نمی‌تواند منفی باشد."
+                        )
+                    }
+                )
+
+            total_cost = quantity * unit_cost
+
+            ingredient.current_stock += quantity
+            ingredient.current_inventory_value += total_cost
+
+        else:
+            quantity_to_remove = abs(quantity)
+
+            if ingredient.current_stock < quantity_to_remove:
+                raise ValidationError(
+                    {
+                        "quantity": (
+                            "موجودی کافی برای اصلاح موجودی وجود ندارد."
+                        )
+                    }
+                )
+
+            effective_unit_cost = (
+                ingredient.average_unit_cost
+            )
+
+            total_cost = (
+                quantity_to_remove
+                * effective_unit_cost
+            )
+
+            ingredient.current_stock -= quantity_to_remove
+            ingredient.current_inventory_value -= total_cost
+
+        ingredient.save(
+            update_fields=[
+                "current_stock",
+                "current_inventory_value",
+                "updated_at",
+            ]
+        )
+
+        return InventoryTransaction.objects.create(
+            organization=organization,
+            ingredient=ingredient,
+            transaction_type=(
+                InventoryTransactionType.ADJUSTMENT
+            ),
+            quantity=quantity,
+            unit_cost=(
+                unit_cost
+                if quantity > Decimal("0")
+                else effective_unit_cost
+            ),
+            total_cost=total_cost,
+            note=note,
+        )
+
+
+class InventoryWasteService:
+    @staticmethod
+    @transaction.atomic
+    def record_waste(
+        *,
+        organization: Organization,
+        ingredient: Ingredient,
+        quantity: Decimal,
+        note: str = "",
+    ) -> InventoryTransaction:
+        if ingredient.organization_id != organization.id:
+            raise ValidationError(
+                {
+                    "ingredient": (
+                        "این ماده اولیه متعلق به "
+                        "کسب‌وکار شما نیست."
+                    )
+                }
+            )
+
+        if not ingredient.is_active:
+            raise ValidationError(
+                {
+                    "ingredient": (
+                        "این ماده اولیه غیرفعال است."
+                    )
+                }
+            )
+
+        if quantity <= Decimal("0"):
+            raise ValidationError(
+                {
+                    "quantity": (
+                        "مقدار دورریز باید بیشتر از صفر باشد."
+                    )
+                }
+            )
+
+        ingredient = (
+            Ingredient.objects
+            .select_for_update()
+            .get(pk=ingredient.pk)
+        )
+
+        if ingredient.current_stock < quantity:
+            raise ValidationError(
+                {
+                    "quantity": (
+                        "موجودی کافی برای ثبت دورریز وجود ندارد."
+                    )
+                }
+            )
+
+        unit_cost = ingredient.average_unit_cost
+
+        total_cost = quantity * unit_cost
+
+        ingredient.current_stock -= quantity
+        ingredient.current_inventory_value -= total_cost
+
+        ingredient.save(
+            update_fields=[
+                "current_stock",
+                "current_inventory_value",
+                "updated_at",
+            ]
+        )
+
+        return InventoryTransaction.objects.create(
+            organization=organization,
+            ingredient=ingredient,
+            transaction_type=(
+                InventoryTransactionType.WASTE
+            ),
+            quantity=-quantity,
+            unit_cost=unit_cost,
+            total_cost=total_cost,
+            note=note,
+        )

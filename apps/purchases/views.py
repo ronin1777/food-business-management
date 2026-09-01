@@ -8,6 +8,7 @@ from .serializers import (
     PurchaseCreateSerializer,
     SupplierAccountSerializer,
     SupplierPaymentCreateSerializer,
+    SupplierRefundCreateSerializer,
     SupplierTransactionSerializer,
 )
 from .filters import PurchaseFilter, SupplierTransactionFilter
@@ -23,6 +24,32 @@ from .models import Purchase, Supplier
 from .services import (
     PurchaseService,
     SupplierService,
+)
+from apps.core.responses import APIResponse
+
+
+from django.core.exceptions import ValidationError
+
+from rest_framework import (
+    mixins,
+    status,
+    viewsets,
+)
+from rest_framework.decorators import action
+from rest_framework.permissions import IsAuthenticated
+from rest_framework.request import Request
+from rest_framework.response import Response
+
+from .filters import PurchaseFilter
+from .models import Purchase
+from .serializers import (
+    PurchaseCreateSerializer,
+    PurchaseDetailSerializer,
+    PurchaseListSerializer,
+)
+from .services import (
+    PurchaseCancellationService,
+    PurchaseService,
 )
 
 
@@ -93,12 +120,55 @@ class PurchaseViewSet(
             **serializer.validated_data,
         )
 
-        return Response(
-            {
+        return APIResponse.success(
+            data={
                 "id": purchase.id,
-                "message": "خرید با موفقیت ثبت شد.",
             },
-            status=status.HTTP_201_CREATED,
+            message="خرید با موفقیت ثبت شد.",
+            status_code=status.HTTP_201_CREATED,
+        )
+
+    def retrieve(
+        self,
+        request: Request,
+        *args,
+        **kwargs,
+    ) -> Response:
+        purchase = self.get_object()
+
+        serializer = self.get_serializer(
+            purchase,
+        )
+
+        return APIResponse.success(
+            data=serializer.data,
+        )
+
+    @action(
+        detail=True,
+        methods=["post"],
+        url_path="cancel",
+    )
+    def cancel(
+        self,
+        request: Request,
+        pk=None,
+    ) -> Response:
+        purchase = PurchaseCancellationService.cancel_purchase(
+            organization=request.user.organization,
+            purchase_id=pk,
+            note=request.data.get(
+                "note",
+                "",
+            ),
+        )
+
+        return APIResponse.success(
+            data={
+                "id": purchase.id,
+                "status": purchase.status,
+            },
+            message="خرید با موفقیت لغو شد.",
         )
     
     
@@ -121,21 +191,25 @@ class SupplierPaymentViewSet(
         serializer = self.get_serializer(
             data=request.data,
         )
-        serializer.is_valid(raise_exception=True)
+
+        serializer.is_valid(
+            raise_exception=True,
+        )
 
         payment = SupplierPaymentService.create_payment(
             organization=request.user.organization,
             **serializer.validated_data,
         )
 
-        return Response(
-            {
+        return APIResponse.success(
+            data={
                 "id": payment.id,
-                "message": "پرداخت تأمین‌کننده با موفقیت ثبت شد.",
             },
-            status=status.HTTP_201_CREATED,
+            message=(
+                "پرداخت تأمین‌کننده با موفقیت ثبت شد."
+            ),
+            status_code=status.HTTP_201_CREATED,
         )
-
 
 
 class SupplierAccountViewSet(
@@ -163,8 +237,9 @@ class SupplierAccountViewSet(
 
         serializer = SupplierAccountSerializer(account)
 
-        return Response(serializer.data)
-
+        return APIResponse.success(
+            data=serializer.data,
+        )
 
 
 
@@ -208,6 +283,53 @@ class SupplierViewSet(
 
         return SupplierUpdateSerializer
 
+    def list(
+        self,
+        request: Request,
+        *args,
+        **kwargs,
+    ) -> Response:
+        queryset = self.filter_queryset(
+            self.get_queryset()
+        )
+
+        page = self.paginate_queryset(queryset)
+
+        if page is not None:
+            serializer = self.get_serializer(
+                page,
+                many=True,
+            )
+
+            return self.get_paginated_response(
+                serializer.data,
+            )
+
+        serializer = self.get_serializer(
+            queryset,
+            many=True,
+        )
+
+        return APIResponse.success(
+            data=serializer.data,
+        )
+
+    def retrieve(
+        self,
+        request: Request,
+        *args,
+        **kwargs,
+    ) -> Response:
+        supplier = self.get_object()
+
+        serializer = self.get_serializer(
+            supplier,
+        )
+
+        return APIResponse.success(
+            data=serializer.data,
+        )
+
     def create(
         self,
         request: Request,
@@ -231,9 +353,10 @@ class SupplierViewSet(
             supplier,
         )
 
-        return Response(
-            response_serializer.data,
-            status=status.HTTP_201_CREATED,
+        return APIResponse.success(
+            data=response_serializer.data,
+            message="تأمین‌کننده با موفقیت ایجاد شد.",
+            status_code=status.HTTP_201_CREATED,
         )
 
     def update(
@@ -244,7 +367,10 @@ class SupplierViewSet(
     ) -> Response:
         supplier = self.get_object()
 
-        partial = kwargs.pop("partial", False)
+        partial = kwargs.pop(
+            "partial",
+            False,
+        )
 
         serializer = self.get_serializer(
             supplier,
@@ -266,9 +392,12 @@ class SupplierViewSet(
             supplier,
         )
 
-        return Response(
-            response_serializer.data,
+        return APIResponse.success(
+            data=response_serializer.data,
+            message="تأمین‌کننده با موفقیت به‌روزرسانی شد.",
         )
+
+    
 
 
 class SupplierTransactionViewSet(
@@ -295,17 +424,106 @@ class SupplierTransactionViewSet(
     )
 
     def get_queryset(self):
-     return (
+        return (
             SupplierTransaction.objects
             .filter(
-            organization=self.request.user.organization,
+                organization=self.request.user.organization,
             )
             .select_related(
-            "supplier",
-            "purchase",
-            "payment",
+                "supplier",
+                "purchase",
+                "payment",
+            )
         )
-    )
 
     def get_serializer_class(self):
         return SupplierTransactionSerializer
+
+    def list(
+        self,
+        request: Request,
+        *args,
+        **kwargs,
+    ) -> Response:
+        queryset = self.filter_queryset(
+            self.get_queryset()
+        )
+
+        page = self.paginate_queryset(queryset)
+
+        if page is not None:
+            serializer = self.get_serializer(
+                page,
+                many=True,
+            )
+
+            return self.get_paginated_response(
+                serializer.data,
+            )
+
+        serializer = self.get_serializer(
+            queryset,
+            many=True,
+        )
+
+        return APIResponse.success(
+            data=serializer.data,
+        )
+
+    def retrieve(
+        self,
+        request: Request,
+        *args,
+        **kwargs,
+    ) -> Response:
+        transaction = self.get_object()
+
+        serializer = self.get_serializer(
+            transaction,
+        )
+
+        return APIResponse.success(
+            data=serializer.data,
+        )
+
+    
+
+
+
+class SupplierRefundViewSet(
+    mixins.CreateModelMixin,
+    viewsets.GenericViewSet,
+):
+    permission_classes = [IsAuthenticated]
+
+    serializer_class = SupplierRefundCreateSerializer
+
+    def create(
+        self,
+        request: Request,
+        *args,
+        **kwargs,
+    ) -> Response:
+        serializer = self.get_serializer(
+            data=request.data,
+        )
+
+        serializer.is_valid(
+            raise_exception=True,
+        )
+
+        refund = SupplierRefundService.create_refund(
+            organization=request.user.organization,
+            **serializer.validated_data,
+        )
+
+        return APIResponse.success(
+            data={
+                "id": refund.id,
+            },
+            message=(
+                "برگشت وجه از تأمین‌کننده "
+                "با موفقیت ثبت شد."
+            ),
+            status_code=status.HTTP_201_CREATED,
+        )

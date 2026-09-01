@@ -37,4 +37,8 @@ path(
     "api/",
     include("apps.products.urls"),
 ),
+path(
+    "api/",
+    include("apps.organizations.urls"),
+),
 ]

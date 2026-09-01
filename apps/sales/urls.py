@@ -3,6 +3,7 @@ from rest_framework.routers import DefaultRouter
 from .views import (
     CustomerAccountViewSet,
     CustomerPaymentViewSet,
+    CustomerRefundViewSet,
     CustomerTransactionViewSet,
     CustomerViewSet,
     OrderViewSet,
@@ -37,5 +38,11 @@ router.register(
     "customer-transactions",
     CustomerTransactionViewSet,
     basename="customer-transaction",
+)
+
+router.register(
+    "customer-refunds",
+    CustomerRefundViewSet,
+    basename="customer-refund",
 )
 urlpatterns = router.urls

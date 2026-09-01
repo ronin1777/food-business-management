@@ -540,3 +540,89 @@ class CustomerTransactionSerializer(
             "created_at",
         )
         read_only_fields = fields
+
+
+
+class CustomerRefundCreateSerializer(serializers.Serializer):
+    customer = serializers.PrimaryKeyRelatedField(
+        queryset=Customer.objects.all(),
+    )
+
+    order = serializers.PrimaryKeyRelatedField(
+        queryset=Order.objects.all(),
+    )
+
+    amount = serializers.DecimalField(
+        max_digits=14,
+        decimal_places=2,
+        min_value=Decimal("0.01"),
+    )
+
+    note = serializers.CharField(
+        required=False,
+        allow_blank=True,
+        default="",
+    )
+
+    def validate_customer(
+        self,
+        customer: Customer,
+    ) -> Customer:
+        request = self.context.get("request")
+
+        if request is None:
+            raise serializers.ValidationError(
+                "درخواست معتبر نیست."
+            )
+
+        if (
+            customer.organization_id
+            != request.user.organization.id
+        ):
+            raise serializers.ValidationError(
+                "این مشتری متعلق به کسب‌وکار شما نیست."
+            )
+
+        if not customer.is_active:
+            raise serializers.ValidationError(
+                "این مشتری غیرفعال است."
+            )
+
+        return customer
+
+    def validate_order(
+        self,
+        order: Order,
+    ) -> Order:
+        request = self.context.get("request")
+
+        if request is None:
+            raise serializers.ValidationError(
+                "درخواست معتبر نیست."
+            )
+
+        if (
+            order.organization_id
+            != request.user.organization.id
+        ):
+            raise serializers.ValidationError(
+                "این سفارش متعلق به کسب‌وکار شما نیست."
+            )
+
+        return order
+
+    def validate(self, attrs):
+        customer = attrs["customer"]
+        order = attrs["order"]
+
+        if order.customer_id != customer.id:
+            raise serializers.ValidationError(
+                {
+                    "order": (
+                        "این سفارش متعلق به "
+                        "مشتری انتخاب‌شده نیست."
+                    )
+                }
+            )
+
+        return attrs

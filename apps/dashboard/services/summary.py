@@ -19,6 +19,7 @@ from apps.reports.services.sales import (
 from apps.reports.services.suppliers import (
     SupplierReportService,
 )
+from apps.sales.models import Order
 
 from .insights import DashboardInsightService
 
@@ -76,6 +77,19 @@ class DashboardService:
         )
 
         # ----------------------------------------------------
+        # Recent orders
+        # ----------------------------------------------------
+
+        recent_orders = (
+            Order.objects
+            .filter(
+                organization_id=organization_id,
+            )
+            .select_related("customer")
+            .order_by("-ordered_at")[:8]
+        )
+
+        # ----------------------------------------------------
         # Summary extraction
         # ----------------------------------------------------
 
@@ -107,9 +121,7 @@ class DashboardService:
 
         insights = (
             DashboardInsightService.generate_insights(
-                sales=(
-                    sales_summary["total_sales"]
-                ),
+                sales=sales_summary["total_sales"],
                 gross_profit=(
                     profitability_summary[
                         "gross_profit"
@@ -309,6 +321,23 @@ class DashboardService:
                     ]
                 ),
             },
+
+            "recent_orders": [
+                {
+                    "id": order.id,
+                    "customer_name": (
+                        order.customer.name
+                        if order.customer
+                        else "مشتری ثبت نشده"
+                    ),
+                    "status": order.status,
+                    "payment_status": (
+                        order.payment_status
+                    ),
+                    "ordered_at": order.ordered_at,
+                }
+                for order in recent_orders
+            ],
 
             "insights": insights,
         }

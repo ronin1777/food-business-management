@@ -275,6 +275,21 @@ class DashboardInsightSerializer(
     metric = serializers.CharField()
 
 
+class DashboardRecentOrderSerializer(
+    serializers.Serializer,
+):
+    id = serializers.IntegerField()
+
+    customer_name = serializers.CharField()
+
+    status = serializers.CharField()
+
+    payment_status = serializers.CharField()
+
+    ordered_at = serializers.DateTimeField()
+
+
+
 class DashboardSerializer(
     serializers.Serializer,
 ):
@@ -292,7 +307,14 @@ class DashboardSerializer(
 
     suppliers = DashboardSuppliersSerializer()
 
+
+
     insights = DashboardInsightSerializer(
         many=True,
     )
+
+
+    recent_orders = DashboardRecentOrderSerializer(
+    many=True,
+)
 

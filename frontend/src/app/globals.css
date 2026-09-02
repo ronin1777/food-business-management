@@ -1,0 +1,201 @@
+@import "tailwindcss";
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+
+  --color-success: var(--success);
+  --color-warning: var(--warning);
+  --color-destructive: var(--destructive);
+
+  --color-chart-sales: var(--chart-sales);
+  --color-chart-profit: var(--chart-profit);
+
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+
+  --color-header: var(--header);
+  --color-header-border: var(--header-border);
+
+  --color-card-border: var(--card-border);
+}
+
+/* =========================================================
+   Light Theme
+   ========================================================= */
+
+:root {
+  /* Page */
+  --background: #f7f8fa;
+  --foreground: #17181a;
+
+  /* Card / Surface */
+  --card: #ffffff;
+  --card-foreground: #17181a;
+
+  /* Popover */
+  --popover: #ffffff;
+  --popover-foreground: #17181a;
+
+  /* Primary */
+  --primary: #18181b;
+  --primary-foreground: #fafafa;
+
+  /* Secondary */
+  --secondary: #f0f1f3;
+  --secondary-foreground: #27282b;
+
+  /* Muted */
+  --muted: #f1f2f4;
+  --muted-foreground: #71747a;
+
+  /* Accent */
+  --accent: #f0f1f3;
+  --accent-foreground: #18191b;
+
+  /* Borders */
+  --border: #e4e6e9;
+  --input: #e1e3e6;
+  --ring: #a1a5ab;
+
+  /* Semantic */
+  --success: #16a34a;
+  --warning: #d97706;
+  --destructive: #dc2626;
+
+  /* Charts */
+  --chart-sales: #3b82f6;
+  --chart-profit: #22c55e;
+
+  /* Dashboard */
+  --sidebar: #ffffff;
+  --sidebar-foreground: #17181a;
+  --sidebar-border: #e5e7eb;
+
+  --header: rgba(255, 255, 255, 0.72);
+  --header-border: rgba(228, 230, 233, 0.8);
+
+  --card-border: #e4e6e9;
+}
+
+/* =========================================================
+   Dark Theme
+   ========================================================= */
+
+.dark {
+  /* Page */
+  --background: #0f1012;
+  --foreground: #f4f4f5;
+
+  /* Card / Surface */
+  --card: #17191d;
+  --card-foreground: #f4f4f5;
+
+  /* Popover */
+  --popover: #1b1d21;
+  --popover-foreground: #f4f4f5;
+
+  /* Primary */
+  --primary: #f4f4f5;
+  --primary-foreground: #18181b;
+
+  /* Secondary */
+  --secondary: #202328;
+  --secondary-foreground: #f4f4f5;
+
+  /* Muted */
+  --muted: #202328;
+  --muted-foreground: #a1a5ab;
+
+  /* Accent */
+  --accent: #22252a;
+  --accent-foreground: #f4f4f5;
+
+  /* Borders */
+  --border: #292c32;
+  --input: #30333a;
+  --ring: #5c616b;
+
+  /* Semantic */
+  --success: #22c55e;
+  --warning: #f59e0b;
+  --destructive: #ef4444;
+
+  /* Charts */
+  --chart-sales: #60a5fa;
+  --chart-profit: #4ade80;
+
+  /* Dashboard */
+  --sidebar: #131519;
+  --sidebar-foreground: #f4f4f5;
+  --sidebar-border: #25282e;
+
+  --header: rgba(23, 25, 29, 0.72);
+  --header-border: rgba(55, 58, 65, 0.7);
+
+  --card-border: #292c32;
+}
+
+/* =========================================================
+   Base
+   ========================================================= */
+
+* {
+  box-sizing: border-box;
+  border-color: var(--border);
+}
+
+html {
+  min-height: 100%;
+  background: var(--background);
+  color: var(--foreground);
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  background: var(--background);
+  color: var(--foreground);
+  font-family: sans-serif;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+button,
+input,
+textarea,
+select {
+  font: inherit;
+}
+
+button {
+  cursor: pointer;
+}
+
+::selection {
+  background: var(--foreground);
+  color: var(--background);
+}

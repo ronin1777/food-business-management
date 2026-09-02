@@ -3,9 +3,10 @@ from decimal import Decimal
 from rest_framework import serializers
 
 from apps.products.models import Product
-
+from django.db.models import Sum
 from .models import (
     Customer,
+    CustomerPayment,
     CustomerPaymentMethod,
     CustomerTransaction,
     Order,
@@ -462,6 +463,10 @@ class OrderDetailSerializer(serializers.ModelSerializer):
 
     gross_profit = serializers.SerializerMethodField()
 
+    paid_amount = serializers.SerializerMethodField()
+
+    remaining_amount = serializers.SerializerMethodField()
+
     class Meta:
         model = Order
         fields = (
@@ -477,9 +482,37 @@ class OrderDetailSerializer(serializers.ModelSerializer):
             "total_material_cost",
             "gross_profit",
             "created_at",
-            "updated_at",
+            "updated_at", "remaining_amount", "paid_amount",
+
         )
         read_only_fields = fields
+
+
+    def get_paid_amount(self, obj):
+        return ( CustomerPayment.objects
+            .filter(order=obj)
+            .aggregate(
+                total=Sum("amount")
+        )
+        .get("total")
+        or Decimal("0")
+    )
+
+
+    def get_remaining_amount(self, obj):
+        total_amount = self.get_total_amount(obj)
+
+        paid_amount = self.get_paid_amount(obj)
+
+        remaining_amount = (
+            total_amount - paid_amount
+        )
+
+        return max(
+            remaining_amount,
+            Decimal("0"),
+    )
+
 
     def get_total_amount(self, obj):
         return sum(

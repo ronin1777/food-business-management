@@ -1055,3 +1055,103 @@ button {
   font-size: 16px;
   font-weight: 700;
 }
+
+
+
+
+
+
+/* =========================================================
+   Dark Mode - Date Picker Day Colors (FIX)
+   ========================================================= */
+
+/* Force day numbers to be bright in dark mode */
+.dark .persian-date-picker .rmdp-day span {
+  color: #f5f5f5 !important;
+  background-color: transparent !important;
+}
+
+/* Active/selectable days in dark mode */
+.dark .persian-date-picker .rmdp-day:not(.rmdp-disabled):not(.rmdp-deactive) span {
+  color: #f0f0f0 !important;
+}
+
+/* Hover state for days in dark mode */
+.dark .persian-date-picker .rmdp-day:not(.rmdp-disabled):not(.rmdp-deactive):hover span {
+  background: hsl(var(--accent)) !important;
+  color: hsl(var(--accent-foreground)) !important;
+}
+
+/* Deactive days (days from other months) in dark mode */
+.dark .persian-date-picker .rmdp-day.rmdp-deactive span {
+  color: #6b6b6b !important;
+  opacity: 0.6 !important;
+}
+
+/* Disabled days in dark mode */
+.dark .persian-date-picker .rmdp-day.rmdp-disabled span {
+  color: #4a4a4a !important;
+  opacity: 0.5 !important;
+}
+
+/* Selected day in dark mode */
+.dark .persian-date-picker .rmdp-selected span {
+  background: hsl(var(--primary)) !important;
+  color: hsl(var(--primary-foreground)) !important;
+}
+
+/* Today in dark mode */
+.dark .persian-date-picker .rmdp-today span {
+  border: 1px solid hsl(var(--primary)) !important;
+  background: transparent !important;
+  color: hsl(var(--primary)) !important;
+}
+
+/* Time picker input in dark mode */
+.dark .persian-date-picker .rmdp-time-picker input {
+  background: #202020 !important;
+  border-color: #333333 !important;
+  color: #f5f5f5 !important;
+}
+
+.dark .persian-date-picker .rmdp-time-picker input:focus {
+  border-color: hsl(var(--ring)) !important;
+  box-shadow: 0 0 0 3px hsl(var(--ring) / 0.15) !important;
+}
+
+/* Week days in dark mode */
+.dark .persian-date-picker .rmdp-week-day {
+  color: #a0a0a0 !important;
+  background-color: #2a2a2a !important;
+}
+
+/* Header in dark mode */
+.dark .persian-date-picker .rmdp-header-values {
+  color: #f0f0f0 !important;
+}
+
+/* Navigation arrows in dark mode */
+.dark .persian-date-picker .rmdp-arrow {
+  border-color: #a0a0a0 !important;
+}
+
+.dark .persian-date-picker .rmdp-arrow-container:hover {
+  background: #2a2a2a !important;
+}
+
+/* Month/Year picker in dark mode */
+.dark .persian-date-picker .rmdp-month-picker,
+.dark .persian-date-picker .rmdp-year-picker {
+  background: #171717 !important;
+}
+
+.dark .persian-date-picker .rmdp-month-picker .rmdp-day,
+.dark .persian-date-picker .rmdp-year-picker .rmdp-day {
+  color: #f0f0f0 !important;
+}
+
+.dark .persian-date-picker .rmdp-month-picker .rmdp-day:hover,
+.dark .persian-date-picker .rmdp-year-picker .rmdp-day:hover {
+  background: hsl(var(--accent)) !important;
+  color: hsl(var(--accent-foreground)) !important;
+}

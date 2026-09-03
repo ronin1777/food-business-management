@@ -72,11 +72,20 @@ export default function ReportsTabs({
       <div
         className="
           flex
-          min-w-max
           gap-1
           overflow-x-auto
-          scrollbar-none
+          overflow-y-hidden
+          pb-1
+          px-1
+          [&::-webkit-scrollbar]:h-1
+          [&::-webkit-scrollbar-track]:bg-transparent
+          [&::-webkit-scrollbar-thumb]:bg-muted-foreground/20
+          [&::-webkit-scrollbar-thumb]:rounded-full
         "
+        style={{
+          scrollbarWidth: "thin",
+          msOverflowStyle: "none",
+        }}
       >
         {tabs.map((tab) => {
           const Icon = tab.icon;
@@ -91,6 +100,8 @@ export default function ReportsTabs({
                 "relative inline-flex h-11 items-center gap-2 px-4",
                 "text-sm font-medium transition-colors",
                 "outline-none",
+                "whitespace-nowrap",
+                "shrink-0",
                 active
                   ? "text-foreground"
                   : "text-muted-foreground hover:text-foreground",

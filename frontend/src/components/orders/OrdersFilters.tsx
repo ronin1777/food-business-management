@@ -85,22 +85,63 @@ export function OrdersFilters({
           />
         </div>
 
-        {/* Status */}
-        <div className="flex items-center gap-2">
-          <SlidersHorizontal className="hidden size-4 text-muted-foreground sm:block" />
+        {/* Filter buttons wrapper - responsive flex wrap */}
+        <div className="flex flex-wrap items-center gap-2">
+          {/* Status */}
+          <div className="flex items-center gap-2">
+            <SlidersHorizontal className="hidden size-4 text-muted-foreground sm:block" />
 
+            <select
+              value={filters.status ?? ""}
+              onChange={(event) =>
+                updateFilter(
+                  "status",
+                  event.target.value as
+                    | OrderStatus
+                    | undefined,
+                )
+              }
+              className="
+                h-10 min-w-[100px] sm:min-w-[130px]
+                rounded-lg
+                border border-input
+                bg-background
+                px-3
+                text-sm
+                outline-none
+                focus:border-ring
+                focus:ring-2
+                focus:ring-ring/20
+                max-w-[140px] sm:max-w-none
+              "
+            >
+              <option value="">
+                همه وضعیت‌ها
+              </option>
+
+              <option value="completed">
+                ثبت شده
+              </option>
+
+              <option value="cancelled">
+                لغو شده
+              </option>
+            </select>
+          </div>
+
+          {/* Payment */}
           <select
-            value={filters.status ?? ""}
+            value={filters.paymentStatus ?? ""}
             onChange={(event) =>
               updateFilter(
-                "status",
+                "paymentStatus",
                 event.target.value as
-                  | OrderStatus
+                  | OrderPaymentStatus
                   | undefined,
               )
             }
             className="
-              h-10 min-w-[130px]
+              h-10 min-w-[120px] sm:min-w-[150px]
               rounded-lg
               border border-input
               bg-background
@@ -110,119 +151,85 @@ export function OrdersFilters({
               focus:border-ring
               focus:ring-2
               focus:ring-ring/20
+              max-w-[150px] sm:max-w-none
             "
           >
             <option value="">
-              همه وضعیت‌ها
+              همه پرداخت‌ها
             </option>
 
-            <option value="completed">
-              ثبت شده
+            <option value="paid">
+              پرداخت شده
             </option>
 
-            <option value="cancelled">
-              لغو شده
+            <option value="partially_paid">
+              نیمه پرداخت
+            </option>
+
+            <option value="unpaid">
+              پرداخت نشده
             </option>
           </select>
-        </div>
 
-        {/* Payment */}
-        <select
-          value={filters.paymentStatus ?? ""}
-          onChange={(event) =>
-            updateFilter(
-              "paymentStatus",
-              event.target.value as
-                | OrderPaymentStatus
-                | undefined,
-            )
-          }
-          className="
-            h-10 min-w-[150px]
-            rounded-lg
-            border border-input
-            bg-background
-            px-3
-            text-sm
-            outline-none
-            focus:border-ring
-            focus:ring-2
-            focus:ring-ring/20
-          "
-        >
-          <option value="">
-            همه پرداخت‌ها
-          </option>
-
-          <option value="paid">
-            پرداخت شده
-          </option>
-
-          <option value="partially_paid">
-            نیمه پرداخت
-          </option>
-
-          <option value="unpaid">
-            پرداخت نشده
-          </option>
-        </select>
-
-        {/* Ordering */}
-        <button
-          type="button"
-          onClick={() =>
-            updateFilter(
-              "ordering",
-              filters.ordering ===
-                "-ordered_at"
-                ? "ordered_at"
-                : "-ordered_at",
-            )
-          }
-          className="
-            inline-flex h-10
-            items-center justify-center gap-2
-            rounded-lg
-            border border-input
-            bg-background
-            px-3
-            text-sm
-            text-foreground
-            transition-colors
-            hover:bg-accent
-          "
-        >
-          {filters.ordering ===
-          "-ordered_at" ? (
-            <ArrowDownAZ className="size-4" />
-          ) : (
-            <ArrowUpAZ className="size-4" />
-          )}
-
-          <span>تاریخ</span>
-        </button>
-
-        {/* Reset */}
-        {hasFilters && (
+          {/* Ordering */}
           <button
             type="button"
-            onClick={resetFilters}
+            onClick={() =>
+              updateFilter(
+                "ordering",
+                filters.ordering ===
+                  "-ordered_at"
+                  ? "ordered_at"
+                  : "-ordered_at",
+              )
+            }
             className="
               inline-flex h-10
               items-center justify-center gap-2
               rounded-lg
+              border border-input
+              bg-background
               px-3
               text-sm
-              text-muted-foreground
+              text-foreground
               transition-colors
               hover:bg-accent
-              hover:text-foreground
+              flex-shrink-0
             "
           >
-            <X className="size-4" />
-            <span>پاک کردن</span>
+            {filters.ordering ===
+            "-ordered_at" ? (
+              <ArrowDownAZ className="size-4" />
+            ) : (
+              <ArrowUpAZ className="size-4" />
+            )}
+
+            <span>تاریخ</span>
           </button>
-        )}
+
+          {/* Reset */}
+          {hasFilters && (
+            <button
+              type="button"
+              onClick={resetFilters}
+              className="
+                inline-flex h-10
+                items-center justify-center gap-2
+                rounded-lg
+                px-3
+                text-sm
+                text-muted-foreground
+                transition-colors
+                hover:bg-accent
+                hover:text-foreground
+                flex-shrink-0
+              "
+            >
+              <X className="size-4" />
+              <span>پاک کردن</span>
+            </button>
+          )}
+        </div>
       </div>
     </div>
   );

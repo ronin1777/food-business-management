@@ -1,20 +1,14 @@
-from django.contrib.auth import authenticate
+
+from django.contrib.auth import get_user_model
 from django.db import transaction
 
 from rest_framework import status, viewsets
-from rest_framework.permissions import (
-    AllowAny,
-    IsAuthenticated,
-)
+from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.request import Request
 from rest_framework.response import Response
 
-from rest_framework_simplejwt.exceptions import (
-    TokenError,
-)
-from rest_framework_simplejwt.tokens import (
-    RefreshToken,
-)
+from rest_framework_simplejwt.exceptions import TokenError
+from rest_framework_simplejwt.tokens import RefreshToken
 
 from apps.core.responses import APIResponse
 
@@ -25,9 +19,10 @@ from .serializers import (
 )
 
 
-class AuthViewSet(
-    viewsets.GenericViewSet,
-):
+User = get_user_model()
+
+
+class AuthViewSet(viewsets.GenericViewSet):
     def get_permissions(self):
         if self.action in {
             "register",
@@ -56,46 +51,19 @@ class AuthViewSet(
         with transaction.atomic():
             user = serializer.save()
 
-        refresh = RefreshToken.for_user(
-            user,
-        )
-
-        access_token = str(
-            refresh.access_token,
-        )
-
-        response = APIResponse.success(
+        return APIResponse.success(
             data={
                 "user": {
                     "id": user.id,
                     "username": user.username,
                 },
             },
-            message="ثبت‌نام با موفقیت انجام شد.",
+            message=(
+                "ثبت‌نام با موفقیت انجام شد. "
+                "حساب کاربری شما پس از تأیید فعال خواهد شد."
+            ),
             status_code=status.HTTP_201_CREATED,
         )
-
-        response.set_cookie(
-            key="access_token",
-            value=access_token,
-            httponly=True,
-            secure=False,
-            samesite="Lax",
-            max_age=15 * 60,
-            path="/",
-        )
-
-        response.set_cookie(
-            key="refresh_token",
-            value=str(refresh),
-            httponly=True,
-            secure=False,
-            samesite="Lax",
-            max_age=7 * 24 * 60 * 60,
-            path="/api/auth/",
-        )
-
-        return response
 
     def login(
         self,
@@ -111,42 +79,29 @@ class AuthViewSet(
             raise_exception=True,
         )
 
-        user = authenticate(
-            request=request,
-            username=serializer.validated_data[
-                "username"
-            ],
-            password=serializer.validated_data[
-                "password"
-            ],
-        )
+        username = serializer.validated_data["username"]
+        password = serializer.validated_data["password"]
 
-        if user is None:
+        user = User.objects.filter(
+            username=username,
+        ).first()
+
+        # User does not exist or password is incorrect.
+        if user is None or not user.check_password(password):
             return APIResponse.error(
-                message=(
-                    "نام کاربری یا رمز عبور "
-                    "اشتباه است."
-                ),
-                status_code=(
-                    status.HTTP_401_UNAUTHORIZED
-                ),
+                message="نام کاربری یا رمز عبور اشتباه است.",
+                status_code=status.HTTP_401_UNAUTHORIZED,
             )
 
+        # Password is correct, but account is inactive.
         if not user.is_active:
             return APIResponse.error(
                 message="حساب کاربری غیرفعال است.",
-                status_code=(
-                    status.HTTP_401_UNAUTHORIZED
-                ),
+                status_code=status.HTTP_401_UNAUTHORIZED,
             )
 
-        refresh = RefreshToken.for_user(
-            user,
-        )
-
-        access_token = str(
-            refresh.access_token,
-        )
+        refresh = RefreshToken.for_user(user)
+        access_token = str(refresh.access_token)
 
         response = APIResponse.success(
             data={
@@ -193,9 +148,7 @@ class AuthViewSet(
         if not refresh_token:
             return APIResponse.error(
                 message="Refresh Token یافت نشد.",
-                status_code=(
-                    status.HTTP_401_UNAUTHORIZED
-                ),
+                status_code=status.HTTP_401_UNAUTHORIZED,
             )
 
         try:
@@ -209,20 +162,13 @@ class AuthViewSet(
 
         except TokenError:
             return APIResponse.error(
-                message=(
-                    "Refresh Token نامعتبر یا "
-                    "منقضی شده است."
-                ),
-                status_code=(
-                    status.HTTP_401_UNAUTHORIZED
-                ),
+                message="Refresh Token نامعتبر یا منقضی شده است.",
+                status_code=status.HTTP_401_UNAUTHORIZED,
             )
 
         response = APIResponse.success(
             data=None,
-            message=(
-                "توکن دسترسی با موفقیت تمدید شد."
-            ),
+            message="توکن دسترسی با موفقیت تمدید شد.",
         )
 
         response.set_cookie(
@@ -252,9 +198,7 @@ class AuthViewSet(
                 refresh = RefreshToken(
                     refresh_token,
                 )
-
                 refresh.blacklist()
-
             except TokenError:
                 pass
 
@@ -290,3 +234,4 @@ class AuthViewSet(
                 "user": serializer.data,
             },
         )
+

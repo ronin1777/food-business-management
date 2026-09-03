@@ -1,18 +1,28 @@
+
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   Bell,
   ChevronDown,
-  LogOut,
   Menu,
   Settings,
   User,
 } from "lucide-react";
 
 import { ThemeToggle } from "@/components/ThemeToggle";
-import { MobileSidebar } from "./Sidebar";
 import { useOrganization } from "@/components/OrganizationProvider";
+import { me } from "@/lib/api/auth";
+
+import { MobileSidebar } from "./Sidebar";
+import { LogoutButton } from "./LogoutButton";
+
+type CurrentUser = {
+  id: number;
+  username: string;
+  first_name: string;
+  last_name: string;
+};
 
 export function Header() {
   const [mobileMenuOpen, setMobileMenuOpen] =
@@ -21,10 +31,40 @@ export function Header() {
   const [userMenuOpen, setUserMenuOpen] =
     useState(false);
 
+  const [user, setUser] =
+    useState<CurrentUser | null>(null);
+
   const {
     organization,
     loading,
   } = useOrganization();
+
+  useEffect(() => {
+    async function loadUser() {
+      try {
+        const response = await me();
+        setUser(response.data.user);
+      } catch (error) {
+        console.error(
+          "Failed to load current user:",
+          error,
+        );
+        setUser(null);
+      }
+    }
+
+    loadUser();
+  }, []);
+
+  const fullName = [
+    user?.first_name,
+    user?.last_name,
+  ]
+    .filter(Boolean)
+    .join(" ");
+
+  const displayName =
+    fullName || user?.username || "کاربر";
 
   return (
     <>
@@ -139,13 +179,14 @@ export function Header() {
               "
             >
               <span
+                title={displayName}
                 className="
                   max-w-[100px]
                   truncate
                   sm:max-w-[140px]
                 "
               >
-                testuser
+                {displayName}
               </span>
 
               <ChevronDown
@@ -184,11 +225,20 @@ export function Header() {
                 {/* User Header */}
                 <div
                   className="
-                    px-3 py-2.5
+                    min-w-0
+                    px-3
+                    py-2.5
                   "
                 >
-                  <p className="truncate text-sm font-medium">
-                    testuser
+                  <p
+                    title={displayName}
+                    className="
+                      truncate
+                      text-sm
+                      font-medium
+                    "
+                  >
+                    {displayName}
                   </p>
 
                   <p className="mt-0.5 text-xs text-muted-foreground">
@@ -249,27 +299,7 @@ export function Header() {
                 <div className="my-1 border-t border-border" />
 
                 {/* Logout */}
-                <button
-                  type="button"
-                  role="menuitem"
-                  onClick={() =>
-                    setUserMenuOpen(false)
-                  }
-                  className="
-                    flex w-full
-                    items-center gap-2.5
-                    rounded-lg
-                    px-3 py-2
-                    text-sm
-                    text-destructive
-                    transition-colors
-                    hover:bg-destructive/10
-                  "
-                >
-                  <LogOut className="size-4 shrink-0" />
-
-                  <span>خروج از حساب</span>
-                </button>
+                <LogoutButton />
               </div>
             )}
           </div>
@@ -285,3 +315,4 @@ export function Header() {
     </>
   );
 }
+

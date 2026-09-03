@@ -1,4 +1,5 @@
 from rest_framework import mixins, status, viewsets
+from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.request import Request
 from rest_framework.response import Response
@@ -21,6 +22,25 @@ class OrganizationViewSet(
     def get_queryset(self):
         return Organization.objects.filter(
             pk=self.request.user.organization.id,
+        )
+
+    @action(
+        detail=False,
+        methods=["get"],
+        url_path="me",
+    )
+    def me(
+        self,
+        request: Request,
+    ) -> Response:
+        organization = request.user.organization
+
+        serializer = self.get_serializer(
+            organization,
+        )
+
+        return APIResponse.success(
+            data=serializer.data,
         )
 
     def retrieve(

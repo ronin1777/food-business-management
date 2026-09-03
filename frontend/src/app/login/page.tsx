@@ -1,3 +1,4 @@
+
 "use client";
 
 import Link from "next/link";
@@ -5,9 +6,13 @@ import {
   FormEvent,
   useState,
 } from "react";
-import { Eye, EyeOff } from "lucide-react";
+import {
+  Eye,
+  EyeOff,
+} from "lucide-react";
 
 import { login } from "@/lib/api/auth";
+import { ApiError } from "@/lib/api/client";
 
 export default function LoginPage() {
   const [username, setUsername] =
@@ -47,9 +52,16 @@ export default function LoginPage() {
         error,
       );
 
-      setError(
-        "نام کاربری یا رمز عبور نادرست است.",
-      );
+      if (error instanceof ApiError) {
+        setError(
+          error.message ||
+            "ورود انجام نشد.",
+        );
+      } else {
+        setError(
+          "ورود انجام نشد. دوباره تلاش کنید.",
+        );
+      }
     } finally {
       setLoading(false);
     }
@@ -200,6 +212,7 @@ export default function LoginPage() {
                     (current) => !current,
                   )
                 }
+                disabled={loading}
                 className="
                   absolute
                   left-2
@@ -213,6 +226,8 @@ export default function LoginPage() {
                   transition-colors
                   hover:bg-accent
                   hover:text-accent-foreground
+                  disabled:pointer-events-none
+                  disabled:opacity-50
                 "
               >
                 {showPassword ? (
@@ -300,3 +315,4 @@ export default function LoginPage() {
     </main>
   );
 }
+

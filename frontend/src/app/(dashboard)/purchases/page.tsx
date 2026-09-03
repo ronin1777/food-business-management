@@ -4,7 +4,6 @@ import Link from "next/link";
 import {
   ArrowDownUp,
   ArrowLeft,
-  CalendarDays,
   Plus,
   Search,
   ShoppingBag,
@@ -18,6 +17,7 @@ import {
 
 import { getPurchases } from "@/lib/api/purchases";
 import { getSuppliers } from "@/lib/api/suppliers";
+import PersianDatePicker from "@/components/ui/PersianDatePicker";
 
 import type { Purchase } from "@/types/purchases";
 import type { Supplier } from "@/types/suppliers";
@@ -451,7 +451,7 @@ export default function PurchasesPage() {
               </select>
             </div>
 
-            {/* From */}
+            {/* From Date */}
             <div className="min-w-0 flex-1">
               <label
                 htmlFor="purchase-from"
@@ -460,39 +460,17 @@ export default function PurchasesPage() {
                 از تاریخ
               </label>
 
-              <div className="relative">
-                <CalendarDays className="pointer-events-none absolute right-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-
-                <input
-                  id="purchase-from"
-                  type="datetime-local"
-                  value={
-                    purchasedAtAfter
-                  }
-                  onChange={(event) => {
-                    setPurchasedAtAfter(
-                      event.target.value,
-                    );
-                    setPage(1);
-                  }}
-                  className="
-                    h-10 w-full
-                    rounded-lg
-                    border border-input
-                    bg-background
-                    pr-9
-                    pl-3
-                    text-sm
-                    outline-none
-                    focus:border-ring
-                    focus:ring-2
-                    focus:ring-ring/20
-                  "
-                />
-              </div>
+              <PersianDatePicker
+                value={purchasedAtAfter}
+                onChange={(value) => {
+                  setPurchasedAtAfter(value);
+                  setPage(1);
+                }}
+                placeholder="انتخاب تاریخ و ساعت"
+              />
             </div>
 
-            {/* To */}
+            {/* To Date */}
             <div className="min-w-0 flex-1">
               <label
                 htmlFor="purchase-to"
@@ -501,36 +479,14 @@ export default function PurchasesPage() {
                 تا تاریخ
               </label>
 
-              <div className="relative">
-                <CalendarDays className="pointer-events-none absolute right-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-
-                <input
-                  id="purchase-to"
-                  type="datetime-local"
-                  value={
-                    purchasedAtBefore
-                  }
-                  onChange={(event) => {
-                    setPurchasedAtBefore(
-                      event.target.value,
-                    );
-                    setPage(1);
-                  }}
-                  className="
-                    h-10 w-full
-                    rounded-lg
-                    border border-input
-                    bg-background
-                    pr-9
-                    pl-3
-                    text-sm
-                    outline-none
-                    focus:border-ring
-                    focus:ring-2
-                    focus:ring-ring/20
-                  "
-                />
-              </div>
+              <PersianDatePicker
+                value={purchasedAtBefore}
+                onChange={(value) => {
+                  setPurchasedAtBefore(value);
+                  setPage(1);
+                }}
+                placeholder="انتخاب تاریخ و ساعت"
+              />
             </div>
 
             {/* Clear */}

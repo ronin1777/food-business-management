@@ -1,3 +1,4 @@
+
 import { apiClient } from "./client";
 
 import type {
@@ -16,12 +17,15 @@ export async function login(
         username,
         password,
       }),
+      skipRefresh: true,
     },
   );
 }
 
 export async function register(
   username: string,
+  firstName: string,
+  lastName: string,
   password: string,
   organizationName: string,
 ): Promise<AuthResponse> {
@@ -31,9 +35,12 @@ export async function register(
       method: "POST",
       body: JSON.stringify({
         username,
+        first_name: firstName,
+        last_name: lastName,
         password,
         organization_name: organizationName,
       }),
+      skipRefresh: true,
     },
   );
 }
@@ -61,3 +68,4 @@ export async function logout(): Promise<void> {
     },
   );
 }
+

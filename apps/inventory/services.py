@@ -496,6 +496,13 @@ class InventoryWasteService:
             .select_for_update()
             .get(pk=ingredient.pk)
         )
+        print(
+    "WASTE STOCK CHECK:",
+    "ingredient=", ingredient.name,
+    "current_stock=", ingredient.current_stock,
+    "quantity=", quantity,
+    "base_unit=", ingredient.base_unit,
+)
 
         if ingredient.current_stock < quantity:
             raise ValidationError(

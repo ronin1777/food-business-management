@@ -36,7 +36,7 @@ export default function NewSupplierPage() {
         });
 
       router.push(
-        `/suppliers/${supplier.id}`,
+        `/suppliers/${supplier.data.id}`,
       );
     } catch (error) {
       console.error(

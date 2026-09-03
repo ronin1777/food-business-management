@@ -25,9 +25,28 @@ export type IngredientsResponse = {
   errors: unknown;
 };
 
+export type IngredientResponse = {
+  success: boolean;
+  data: Ingredient;
+  message: string | null;
+  errors: unknown;
+};
+
 export type IngredientListParams = {
   page?: number;
   pageSize?: number;
   search?: string;
   ordering?: string;
+};
+
+export type CreateIngredientPayload = {
+  name: string;
+  unit_type: string;
+  is_active?: boolean;
+};
+
+export type UpdateIngredientPayload = {
+  name?: string;
+  unit_type?: string;
+  is_active?: boolean;
 };

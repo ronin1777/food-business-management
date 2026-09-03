@@ -232,32 +232,27 @@ class InventoryWasteViewSet(
     viewsets.GenericViewSet,
 ):
     permission_classes = [IsAuthenticated]
-
     serializer_class = InventoryWasteCreateSerializer
 
-    def create(
-        self,
-        request: Request,
-        *args,
-        **kwargs,
-    ) -> Response:
-        serializer = self.get_serializer(
-            data=request.data,
-        )
+    def create(self, request: Request, *args, **kwargs) -> Response:
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
 
-        serializer.is_valid(
-            raise_exception=True,
-        )
-
-        waste = InventoryWasteService.record_waste(
-            organization=request.user.organization,
-            **serializer.validated_data,
-        )
+        try:
+            waste = InventoryWasteService.record_waste(
+                organization=request.user.organization,
+                **serializer.validated_data,
+            )
+        except Exception as exc:
+            print(
+                "WASTE ERROR:",
+                type(exc).__name__,
+                str(exc),
+            )
+            raise
 
         return APIResponse.success(
-            data={
-                "id": waste.id,
-            },
+            data={"id": waste.id},
             message="دورریز با موفقیت ثبت شد.",
             status_code=status.HTTP_201_CREATED,
         )

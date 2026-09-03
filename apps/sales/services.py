@@ -350,6 +350,7 @@ class OrderService:
         recipe = (
             product.recipes
             .filter(
+                is_active=True,
                 valid_from__lte=ordered_at,
             )
             .filter(

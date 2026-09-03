@@ -2,7 +2,10 @@ from rest_framework import mixins, status, viewsets
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.request import Request
 from rest_framework.response import Response
-
+from django.db.models import Exists, OuterRef, Q
+from django.utils.dateparse import parse_datetime
+from rest_framework.exceptions import ValidationError
+from apps.core.responses import APIResponse
 from .models import Product, Recipe
 from .serializers import (
     ProductCreateSerializer,
@@ -41,8 +44,43 @@ class ProductViewSet(
     )
 
     def get_queryset(self):
-        return Product.objects.filter(
+        queryset = Product.objects.filter(
             organization=self.request.user.organization,
+        )
+
+        ordered_at = self.request.query_params.get(
+            "ordered_at",
+        )
+
+        if not ordered_at:
+            return queryset
+
+        ordered_at = parse_datetime(
+            ordered_at,
+        )
+
+        if ordered_at is None:
+            raise ValidationError(
+                {
+                    "ordered_at": (
+                        "تاریخ سفارش معتبر نیست."
+                    )
+                }
+            )
+
+        valid_recipe = Recipe.objects.filter(
+            product=OuterRef("pk"),
+            is_active=True,
+            valid_from__lte=ordered_at,
+        ).filter(
+            Q(valid_to__isnull=True)
+            | Q(valid_to__gt=ordered_at)
+        )
+
+        return queryset.annotate(
+            has_valid_recipe=Exists(
+                valid_recipe,
+            ),
         )
 
     def get_serializer_class(self):

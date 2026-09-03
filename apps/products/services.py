@@ -125,6 +125,205 @@ class ProductService:
         return product
 
 
+# class RecipeService:
+#     @staticmethod
+#     @transaction.atomic
+#     def create_recipe(
+#         *,
+#         organization: Organization,
+#         product: Product,
+#         valid_from,
+#         valid_to,
+#         is_active: bool,
+#         items: list[dict],
+#     ) -> Recipe:
+#         if product.organization_id != organization.id:
+#             raise ValidationError(
+#                 {
+#                     "product": (
+#                         "این محصول متعلق به "
+#                         "کسب‌وکار شما نیست."
+#                     )
+#                 }
+#             )
+
+#         if not product.is_active:
+#             raise ValidationError(
+#                 {
+#                     "product": (
+#                         "این محصول غیرفعال است."
+#                     )
+#                 }
+#             )
+
+#         if not items:
+#             raise ValidationError(
+#                 {
+#                     "items": (
+#                         "Recipe باید حداقل یک ماده اولیه "
+#                         "داشته باشد."
+#                     )
+#                 }
+#             )
+
+#         if valid_to is not None and valid_to <= valid_from:
+#             raise ValidationError(
+#                 {
+#                     "valid_to": (
+#                         "تاریخ پایان باید بعد از "
+#                         "تاریخ شروع باشد."
+#                     )
+#                 }
+#             )
+
+#         # Lock the product so concurrent requests
+#         # cannot generate duplicate recipe versions.
+#         product = (
+#             Product.objects
+#             .select_for_update()
+#             .get(pk=product.pk)
+#         )
+
+#         # Check whether the new validity range overlaps
+#         # an existing recipe.
+#         if valid_to is None:
+#             overlapping = (
+#                 Recipe.objects
+#                 .filter(
+#                     product=product,
+#                     valid_from__lte=valid_from,
+#                 )
+#                 .filter(
+#                     models.Q(valid_to__isnull=True)
+#                     | models.Q(valid_to__gt=valid_from)
+#                 )
+#             )
+#         else:
+#             overlapping = (
+#                 Recipe.objects
+#                 .filter(
+#                     product=product,
+#                     valid_from__lt=valid_to,
+#                 )
+#                 .filter(
+#                     models.Q(valid_to__isnull=True)
+#                     | models.Q(valid_to__gt=valid_from)
+#                 )
+#             )
+
+#         if overlapping.exists():
+#             raise ValidationError(
+#                 {
+#                     "valid_from": (
+#                         "بازه زمانی این Recipe با "
+#                         "Recipe دیگری تداخل دارد."
+#                     )
+#                 }
+#             )
+
+#         latest_version = (
+#             Recipe.objects
+#             .filter(product=product)
+#             .order_by("-version")
+#             .values_list("version", flat=True)
+#             .first()
+#             or 0
+#         )
+
+#         recipe = Recipe.objects.create(
+#             product=product,
+#             version=latest_version + 1,
+#             valid_from=valid_from,
+#             valid_to=valid_to,
+#             is_active=is_active,
+#         )
+
+#         for item_data in items:
+#             RecipeService._create_recipe_item(
+#                 recipe=recipe,
+#                 organization=organization,
+#                 item_data=item_data,
+#             )
+
+#         return recipe
+
+#     @staticmethod
+#     def _create_recipe_item(
+#         *,
+#         recipe: Recipe,
+#         organization: Organization,
+#         item_data: dict,
+#     ) -> RecipeItem:
+#         ingredient: Ingredient = item_data["ingredient"]
+
+#         if ingredient.organization_id != organization.id:
+#             raise ValidationError(
+#                 {
+#                     "ingredient": (
+#                         "این ماده اولیه متعلق به "
+#                         "کسب‌وکار شما نیست."
+#                     )
+#                 }
+#             )
+
+#         if not ingredient.is_active:
+#             raise ValidationError(
+#                 {
+#                     "ingredient": (
+#                         "این ماده اولیه غیرفعال است."
+#                     )
+#                 }
+#             )
+
+#         quantity = Decimal(
+#             str(item_data["quantity"])
+#         )
+
+#         if quantity <= Decimal("0"):
+#             raise ValidationError(
+#                 {
+#                     "quantity": (
+#                         "مقدار ماده اولیه باید "
+#                         "بیشتر از صفر باشد."
+#                     )
+#                 }
+#             )
+
+#         unit = str(item_data["unit"])
+
+#         valid_units = {
+#             "weight": {"g", "kg"},
+#             "volume": {"ml", "l"},
+#             "count": {"piece"},
+#         }.get(
+#             ingredient.unit_type,
+#             set(),
+#         )
+
+#         if unit not in valid_units:
+#             raise ValidationError(
+#                 {
+#                     "unit": (
+#                         "واحد انتخاب‌شده برای "
+#                         "این ماده اولیه معتبر نیست."
+#                     )
+#                 }
+#             )
+
+#         base_quantity = (
+#             quantity * UNIT_TO_BASE_FACTOR[unit]
+#         )
+
+#         return RecipeItem.objects.create(
+#             recipe=recipe,
+#             ingredient=ingredient,
+#             quantity=quantity,
+#             unit=unit,
+#             base_quantity=base_quantity,
+#         )
+
+
+
 class RecipeService:
     @staticmethod
     @transaction.atomic
@@ -176,67 +375,83 @@ class RecipeService:
                 }
             )
 
-        # Lock the product so concurrent requests
-        # cannot generate duplicate recipe versions.
+        # Lock product to prevent concurrent version creation.
         product = (
             Product.objects
             .select_for_update()
             .get(pk=product.pk)
         )
 
-        # Check whether the new validity range overlaps
-        # an existing recipe.
-        if valid_to is None:
-            overlapping = (
-                Recipe.objects
-                .filter(
-                    product=product,
-                    valid_from__lte=valid_from,
-                )
-                .filter(
-                    models.Q(valid_to__isnull=True)
-                    | models.Q(valid_to__gt=valid_from)
-                )
-            )
-        else:
-            overlapping = (
-                Recipe.objects
-                .filter(
-                    product=product,
-                    valid_from__lt=valid_to,
-                )
-                .filter(
-                    models.Q(valid_to__isnull=True)
-                    | models.Q(valid_to__gt=valid_from)
-                )
-            )
-
-        if overlapping.exists():
-            raise ValidationError(
-                {
-                    "valid_from": (
-                        "بازه زمانی این Recipe با "
-                        "Recipe دیگری تداخل دارد."
-                    )
-                }
-            )
-
-        latest_version = (
+        # Get the latest version of this product.
+        latest_recipe = (
             Recipe.objects
             .filter(product=product)
             .order_by("-version")
-            .values_list("version", flat=True)
             .first()
-            or 0
         )
 
-        recipe = Recipe.objects.create(
-            product=product,
-            version=latest_version + 1,
-            valid_from=valid_from,
-            valid_to=valid_to,
-            is_active=is_active,
-        )
+        # ---------------------------------------------------------
+        # First Recipe
+        # ---------------------------------------------------------
+
+        if latest_recipe is None:
+            recipe = Recipe.objects.create(
+                product=product,
+                version=1,
+                valid_from=valid_from,
+                valid_to=valid_to,
+                is_active=is_active,
+            )
+
+        # ---------------------------------------------------------
+        # New Recipe Version
+        # ---------------------------------------------------------
+
+        else:
+            # New version cannot start before the latest version.
+            if valid_from < latest_recipe.valid_from:
+                raise ValidationError(
+                    {
+                        "valid_from": (
+                            "تاریخ شروع Version جدید "
+                            "نمی‌تواند قبل از تاریخ شروع "
+                            "Version قبلی باشد."
+                        )
+                    }
+                )
+
+            # If the previous version is open,
+            # close it when the new version starts.
+            if latest_recipe.valid_to is None:
+                latest_recipe.valid_to = valid_from
+                latest_recipe.save(
+                    update_fields=["valid_to"]
+                )
+
+            # If the previous version already has an end date,
+            # the new version must start after that date.
+            elif valid_from < latest_recipe.valid_to:
+                raise ValidationError(
+                    {
+                        "valid_from": (
+                            "تاریخ شروع Version جدید "
+                            "با بازه زمانی Version قبلی "
+                            "تداخل دارد."
+                        )
+                    }
+                )
+
+            recipe = Recipe.objects.create(
+                product=product,
+                version=latest_recipe.version + 1,
+                valid_from=valid_from,
+                valid_to=valid_to,
+                is_active=is_active,
+            )
+
+        # ---------------------------------------------------------
+        # Create Recipe Items
+        # ---------------------------------------------------------
 
         for item_data in items:
             RecipeService._create_recipe_item(

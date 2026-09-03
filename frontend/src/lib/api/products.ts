@@ -12,22 +12,42 @@ export async function getProducts(
   const searchParams = new URLSearchParams();
 
   if (params.page) {
-    searchParams.set("page", String(params.page));
+    searchParams.set(
+      "page",
+      String(params.page),
+    );
   }
 
   if (params.pageSize) {
-    searchParams.set("page_size", String(params.pageSize));
+    searchParams.set(
+      "page_size",
+      String(params.pageSize),
+    );
   }
 
   if (params.search) {
-    searchParams.set("search", params.search);
+    searchParams.set(
+      "search",
+      params.search,
+    );
   }
 
   if (params.ordering) {
-    searchParams.set("ordering", params.ordering);
+    searchParams.set(
+      "ordering",
+      params.ordering,
+    );
   }
 
-  const query = searchParams.toString();
+  if (params.orderedAt) {
+    searchParams.set(
+      "ordered_at",
+      params.orderedAt,
+    );
+  }
+
+  const query =
+    searchParams.toString();
 
   return apiClient<ProductsResponse>(
     `/api/products/${query ? `?${query}` : ""}`,

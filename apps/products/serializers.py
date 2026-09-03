@@ -8,6 +8,10 @@ from .models import Product, Recipe, RecipeItem
 
 
 class ProductListSerializer(serializers.ModelSerializer):
+    has_valid_recipe = serializers.BooleanField(
+        read_only=True,
+    )
+
     class Meta:
         model = Product
         fields = (
@@ -17,6 +21,7 @@ class ProductListSerializer(serializers.ModelSerializer):
             "is_active",
             "created_at",
             "updated_at",
+            "has_valid_recipe",
         )
         read_only_fields = fields
 

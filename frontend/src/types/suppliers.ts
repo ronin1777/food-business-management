@@ -102,3 +102,12 @@ export type SupplierDetailResponse = {
   message: string | null;
   errors: unknown;
 };
+
+
+
+export type CreateSupplierResponse = {
+  success: boolean;
+  data: SupplierDetail;
+  message: string | null;
+  errors: unknown;
+};

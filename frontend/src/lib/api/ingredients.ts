@@ -1,48 +1,37 @@
 import { apiClient } from "./client";
 
 import type {
+  CreateIngredientPayload,
   Ingredient,
   IngredientListParams,
-  IngredientsResponse,
+  IngredientsPagination,
+  UpdateIngredientPayload,
 } from "@/types/ingredients";
 
 export async function getIngredients(
   params: IngredientListParams = {},
-): Promise<IngredientsResponse> {
+): Promise<IngredientsPagination> {
   const searchParams = new URLSearchParams();
 
   if (params.page) {
-    searchParams.set(
-      "page",
-      String(params.page),
-    );
+    searchParams.set("page", String(params.page));
   }
 
   if (params.pageSize) {
-    searchParams.set(
-      "page_size",
-      String(params.pageSize),
-    );
+    searchParams.set("page_size", String(params.pageSize));
   }
 
   if (params.search) {
-    searchParams.set(
-      "search",
-      params.search,
-    );
+    searchParams.set("search", params.search);
   }
 
   if (params.ordering) {
-    searchParams.set(
-      "ordering",
-      params.ordering,
-    );
+    searchParams.set("ordering", params.ordering);
   }
 
-  const query =
-    searchParams.toString();
+  const query = searchParams.toString();
 
-  return apiClient<IngredientsResponse>(
+  return apiClient<IngredientsPagination>(
     `/api/ingredients/${query ? `?${query}` : ""}`,
   );
 }
@@ -55,12 +44,6 @@ export async function getIngredient(
   );
 }
 
-export type CreateIngredientPayload = {
-  name: string;
-  unit_type: string;
-  is_active?: boolean;
-};
-
 export async function createIngredient(
   payload: CreateIngredientPayload,
 ): Promise<Ingredient> {
@@ -72,12 +55,6 @@ export async function createIngredient(
     },
   );
 }
-
-export type UpdateIngredientPayload = {
-  name?: string;
-  unit_type?: string;
-  is_active?: boolean;
-};
 
 export async function updateIngredient(
   ingredientId: number,

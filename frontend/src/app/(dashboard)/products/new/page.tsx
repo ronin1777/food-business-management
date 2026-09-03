@@ -7,6 +7,7 @@ import ProductForm, {
   ProductFormValues,
 } from "@/components/products/ProductForm";
 
+import { ApiError } from "@/lib/api/client";
 import { createProduct } from "@/lib/api/products";
 
 export default function NewProductPage() {
@@ -25,7 +26,7 @@ export default function NewProductPage() {
       setLoading(true);
       setError(null);
 
-      const product =
+      const response =
         await createProduct({
           name: values.name,
           selling_price: Number(
@@ -35,18 +36,64 @@ export default function NewProductPage() {
             values.is_active,
         });
 
-      router.push(
-        `/products/${product.id}`,
-      );
-    } catch (error) {
-      console.error(
-        "Create product error:",
-        error,
+      console.log(
+        "CREATE PRODUCT RESPONSE:",
+        response,
       );
 
+      router.push(
+        `/products/${response.data.id}`,
+      );
+    } catch (err) {
+      console.error(
+        "Create product error:",
+        err,
+      );
+
+      if (err instanceof ApiError) {
+        const errors = err.errors;
+
+        if (
+          errors &&
+          typeof errors === "object"
+        ) {
+          const fieldErrors =
+            errors as Record<
+              string,
+              unknown
+            >;
+
+          const messages =
+            Object.values(
+              fieldErrors,
+            ).flatMap((value) =>
+              Array.isArray(value)
+                ? value.filter(
+                    (
+                      item,
+                    ): item is string =>
+                      typeof item ===
+                      "string",
+                  )
+                : typeof value ===
+                    "string"
+                  ? [value]
+                  : [],
+            );
+
+          if (messages.length > 0) {
+            setError(messages[0]);
+            return;
+          }
+        }
+
+        setError(err.message);
+        return;
+      }
+
       setError(
-        error instanceof Error
-          ? error.message
+        err instanceof Error
+          ? err.message
           : "ثبت محصول انجام نشد.",
       );
     } finally {

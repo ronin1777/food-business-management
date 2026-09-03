@@ -10,9 +10,10 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import {
-  useEffect,
   useState,
 } from "react";
+
+import PersianDatePicker from "@/components/ui/PersianDatePicker";
 
 import type { Ingredient } from "@/types/ingredients";
 import type { Product } from "@/types/products";
@@ -127,8 +128,7 @@ export default function RecipeForm({
         itemIndex === index
           ? {
               ...item,
-              ingredient:
-                ingredientId,
+              ingredient: ingredientId,
               unit:
                 item.unit ||
                 ingredient?.base_unit ||
@@ -137,14 +137,6 @@ export default function RecipeForm({
           : item,
       ),
     );
-  }
-
-  function toIsoDateTime(
-    value: string,
-  ): string {
-    return new Date(
-      value,
-    ).toISOString();
   }
 
   async function handleSubmit() {
@@ -237,11 +229,8 @@ export default function RecipeForm({
 
     await onSubmit({
       product,
-      valid_from:
-        toIsoDateTime(validFrom),
-      valid_to: validTo
-        ? toIsoDateTime(validTo)
-        : "",
+      valid_from: validFrom,
+      valid_to: validTo,
       is_active: isActive,
       items,
     });
@@ -373,68 +362,32 @@ export default function RecipeForm({
 
             {/* Valid From */}
             <div>
-              <label
-                htmlFor="recipe-valid-from"
-                className="mb-2 block text-sm font-medium"
-              >
+              <label className="mb-2 block text-sm font-medium">
                 شروع اعتبار
                 <span className="mr-1 text-destructive">
                   *
                 </span>
               </label>
 
-              <input
-                id="recipe-valid-from"
-                type="datetime-local"
+              <PersianDatePicker
                 value={validFrom}
-                onChange={(event) =>
-                  setValidFrom(
-                    event.target.value,
-                  )
-                }
+                onChange={setValidFrom}
+                placeholder="انتخاب تاریخ شروع"
                 disabled={loading}
-                className="
-                  h-11 w-full
-                  rounded-lg border border-input
-                  bg-background px-3
-                  text-sm
-                  outline-none
-                  focus:border-ring
-                  focus:ring-2
-                  focus:ring-ring/20
-                "
               />
             </div>
 
             {/* Valid To */}
             <div>
-              <label
-                htmlFor="recipe-valid-to"
-                className="mb-2 block text-sm font-medium"
-              >
+              <label className="mb-2 block text-sm font-medium">
                 پایان اعتبار
               </label>
 
-              <input
-                id="recipe-valid-to"
-                type="datetime-local"
+              <PersianDatePicker
                 value={validTo}
-                onChange={(event) =>
-                  setValidTo(
-                    event.target.value,
-                  )
-                }
+                onChange={setValidTo}
+                placeholder="انتخاب تاریخ پایان"
                 disabled={loading}
-                className="
-                  h-11 w-full
-                  rounded-lg border border-input
-                  bg-background px-3
-                  text-sm
-                  outline-none
-                  focus:border-ring
-                  focus:ring-2
-                  focus:ring-ring/20
-                "
               />
 
               <p className="mt-2 text-xs text-muted-foreground">

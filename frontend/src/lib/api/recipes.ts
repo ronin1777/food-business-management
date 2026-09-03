@@ -1,7 +1,9 @@
+
 import { apiClient } from "./client";
 
 import type {
   RecipeDetail,
+  RecipeDetailResponse,
   RecipeListParams,
   RecipesResponse,
 } from "@/types/recipes";
@@ -12,35 +14,22 @@ export async function getRecipes(
   const searchParams = new URLSearchParams();
 
   if (params.page) {
-    searchParams.set(
-      "page",
-      String(params.page),
-    );
+    searchParams.set("page", String(params.page));
   }
 
   if (params.pageSize) {
-    searchParams.set(
-      "page_size",
-      String(params.pageSize),
-    );
+    searchParams.set("page_size", String(params.pageSize));
   }
 
   if (params.search) {
-    searchParams.set(
-      "search",
-      params.search,
-    );
+    searchParams.set("search", params.search);
   }
 
   if (params.ordering) {
-    searchParams.set(
-      "ordering",
-      params.ordering,
-    );
+    searchParams.set("ordering", params.ordering);
   }
 
-  const query =
-    searchParams.toString();
+  const query = searchParams.toString();
 
   return apiClient<RecipesResponse>(
     `/api/recipes/${query ? `?${query}` : ""}`,
@@ -71,8 +60,8 @@ export type CreateRecipePayload = {
 
 export async function createRecipe(
   payload: CreateRecipePayload,
-): Promise<RecipeDetail> {
-  return apiClient<RecipeDetail>(
+): Promise<RecipeDetailResponse> {
+  return apiClient<RecipeDetailResponse>(
     "/api/recipes/",
     {
       method: "POST",
@@ -80,3 +69,4 @@ export async function createRecipe(
     },
   );
 }
+

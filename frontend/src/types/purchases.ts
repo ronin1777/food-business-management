@@ -92,7 +92,12 @@ export type CreatePurchasePayload = {
 };
 
 export type CreatePurchaseResponse = {
-  id: number;
+  success: boolean;
+  data: {
+    id: number;
+  };
+  message: string | null;
+  errors: unknown;
 };
 
 

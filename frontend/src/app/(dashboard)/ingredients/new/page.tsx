@@ -7,9 +7,8 @@ import IngredientForm, {
   IngredientUnitOption,
 } from "@/components/ingredients/IngredientForm";
 
-import {
-  createIngredient,
-} from "@/lib/api/ingredients";
+import { ApiError } from "@/lib/api/client";
+import { createIngredient } from "@/lib/api/ingredients";
 
 const UNIT_OPTIONS: IngredientUnitOption[] = [
   {
@@ -29,11 +28,8 @@ const UNIT_OPTIONS: IngredientUnitOption[] = [
 export default function NewIngredientPage() {
   const router = useRouter();
 
-  const [loading, setLoading] =
-    useState(false);
-
-  const [error, setError] =
-    useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   async function handleSubmit(values: {
     name: string;
@@ -41,34 +37,70 @@ export default function NewIngredientPage() {
     is_active: boolean;
   }) {
     try {
-      setLoading(true);
-      setError(null);
+  setLoading(true);
+  setError(null);
 
-      const ingredient =
-        await createIngredient({
-          name: values.name,
-          unit_type: values.unit_type,
-          is_active:
-            values.is_active,
-        });
+  const response = await createIngredient({
+    name: values.name,
+    unit_type: values.unit_type,
+    is_active: values.is_active,
+  });
 
-      router.push(
-        `/ingredients/${ingredient.id}`,
-      );
-    } catch (error) {
-      console.error(
-        "Create ingredient error:",
-        error,
+  console.log(
+    "CREATE INGREDIENT RESPONSE:",
+    response,
+  );
+
+  router.push(`/ingredients/${response.data.id}`);
+} catch (err) {
+  console.error(
+    "Create ingredient error:",
+    err,
+  );
+
+  if (err instanceof ApiError) {
+    const errors = err.errors;
+
+    if (
+      errors &&
+      typeof errors === "object"
+    ) {
+      const fieldErrors = errors as Record<
+        string,
+        unknown
+      >;
+
+      const messages = Object.values(
+        fieldErrors,
+      ).flatMap((value) =>
+        Array.isArray(value)
+          ? value.filter(
+              (item): item is string =>
+                typeof item === "string",
+            )
+          : typeof value === "string"
+            ? [value]
+            : [],
       );
 
-      setError(
-        error instanceof Error
-          ? error.message
-          : "ثبت ماده اولیه انجام نشد.",
-      );
-    } finally {
-      setLoading(false);
+      if (messages.length > 0) {
+        setError(messages[0]);
+        return;
+      }
     }
+
+    setError(err.message);
+    return;
+  }
+
+  setError(
+    err instanceof Error
+      ? err.message
+      : "ثبت ماده اولیه انجام نشد.",
+  );
+} finally {
+  setLoading(false);
+}
   }
 
   return (

@@ -1,4 +1,8 @@
 @import "tailwindcss";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
+
+@custom-variant dark (&:is(.dark *));
 
 @theme inline {
   --color-background: var(--background);
@@ -41,6 +45,44 @@
   --color-header-border: var(--header-border);
 
   --color-card-border: var(--card-border);
+
+  --font-heading: var(--font-sans);
+
+  --font-sans: var(--font-sans);
+
+  --color-sidebar-ring: var(--sidebar-ring);
+
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+
+  --color-sidebar-accent: var(--sidebar-accent);
+
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+
+  --color-sidebar-primary: var(--sidebar-primary);
+
+  --color-chart-5: var(--chart-5);
+
+  --color-chart-4: var(--chart-4);
+
+  --color-chart-3: var(--chart-3);
+
+  --color-chart-2: var(--chart-2);
+
+  --color-chart-1: var(--chart-1);
+
+  --radius-sm: calc(var(--radius) * 0.6);
+
+  --radius-md: calc(var(--radius) * 0.8);
+
+  --radius-lg: var(--radius);
+
+  --radius-xl: calc(var(--radius) * 1.4);
+
+  --radius-2xl: calc(var(--radius) * 1.8);
+
+  --radius-3xl: calc(var(--radius) * 2.2);
+
+  --radius-4xl: calc(var(--radius) * 2.6);
 }
 
 /* =========================================================
@@ -49,56 +91,80 @@
 
 :root {
   /* Page */
-  --background: #f7f8fa;
-  --foreground: #17181a;
 
   /* Card / Surface */
-  --card: #ffffff;
-  --card-foreground: #17181a;
+  --card: oklch(1 0 0);
+  --card-foreground: oklch(0.145 0 0);
 
   /* Popover */
-  --popover: #ffffff;
-  --popover-foreground: #17181a;
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0.145 0 0);
 
   /* Primary */
-  --primary: #18181b;
-  --primary-foreground: #fafafa;
+  --primary: oklch(0.205 0 0);
+  --primary-foreground: oklch(0.985 0 0);
 
   /* Secondary */
-  --secondary: #f0f1f3;
-  --secondary-foreground: #27282b;
+  --secondary: oklch(0.97 0 0);
+  --secondary-foreground: oklch(0.205 0 0);
 
   /* Muted */
-  --muted: #f1f2f4;
-  --muted-foreground: #71747a;
+  --muted: oklch(0.97 0 0);
+  --muted-foreground: oklch(0.556 0 0);
 
   /* Accent */
-  --accent: #f0f1f3;
-  --accent-foreground: #18191b;
+  --accent: oklch(0.97 0 0);
+  --accent-foreground: oklch(0.205 0 0);
 
   /* Borders */
-  --border: #e4e6e9;
-  --input: #e1e3e6;
-  --ring: #a1a5ab;
+  --border: oklch(0.922 0 0);
+  --input: oklch(0.922 0 0);
+  --ring: oklch(0.708 0 0);
 
   /* Semantic */
   --success: #16a34a;
   --warning: #d97706;
-  --destructive: #dc2626;
+  --destructive: oklch(0.577 0.245 27.325);
 
   /* Charts */
   --chart-sales: #3b82f6;
   --chart-profit: #22c55e;
 
   /* Dashboard */
-  --sidebar: #ffffff;
-  --sidebar-foreground: #17181a;
-  --sidebar-border: #e5e7eb;
+  --sidebar: oklch(0.985 0 0);
+  --sidebar-foreground: oklch(0.145 0 0);
+  --sidebar-border: oklch(0.922 0 0);
 
   --header: rgba(255, 255, 255, 0.72);
   --header-border: rgba(228, 230, 233, 0.8);
 
   --card-border: #e4e6e9;
+
+  --background: oklch(1 0 0);
+
+  --foreground: oklch(0.145 0 0);
+
+  --chart-1: oklch(0.87 0 0);
+
+  --chart-2: oklch(0.556 0 0);
+
+  --chart-3: oklch(0.439 0 0);
+
+  --chart-4: oklch(0.371 0 0);
+
+  --chart-5: oklch(0.269 0 0);
+
+  --radius: 0.625rem;
+
+  --sidebar-primary: oklch(0.205 0 0);
+
+  --sidebar-primary-foreground: oklch(0.985 0 0);
+
+  --sidebar-accent: oklch(0.97 0 0);
+
+  --sidebar-accent-foreground: oklch(0.205 0 0);
+
+  --sidebar-ring: oklch(0.708 0 0);
 }
 
 /* =========================================================
@@ -107,56 +173,76 @@
 
 .dark {
   /* Page */
-  --background: #0f1012;
-  --foreground: #f4f4f5;
+  --background: oklch(0.145 0 0);
+  --foreground: oklch(0.985 0 0);
 
   /* Card / Surface */
-  --card: #17191d;
-  --card-foreground: #f4f4f5;
+  --card: oklch(0.205 0 0);
+  --card-foreground: oklch(0.985 0 0);
 
   /* Popover */
-  --popover: #1b1d21;
-  --popover-foreground: #f4f4f5;
+  --popover: oklch(0.205 0 0);
+  --popover-foreground: oklch(0.985 0 0);
 
   /* Primary */
-  --primary: #f4f4f5;
-  --primary-foreground: #18181b;
+  --primary: oklch(0.922 0 0);
+  --primary-foreground: oklch(0.205 0 0);
 
   /* Secondary */
-  --secondary: #202328;
-  --secondary-foreground: #f4f4f5;
+  --secondary: oklch(0.269 0 0);
+  --secondary-foreground: oklch(0.985 0 0);
 
   /* Muted */
-  --muted: #202328;
-  --muted-foreground: #a1a5ab;
+  --muted: oklch(0.269 0 0);
+  --muted-foreground: oklch(0.708 0 0);
 
   /* Accent */
-  --accent: #22252a;
-  --accent-foreground: #f4f4f5;
+  --accent: oklch(0.269 0 0);
+  --accent-foreground: oklch(0.985 0 0);
 
   /* Borders */
-  --border: #292c32;
-  --input: #30333a;
-  --ring: #5c616b;
+  --border: oklch(1 0 0 / 10%);
+  --input: oklch(1 0 0 / 15%);
+  --ring: oklch(0.556 0 0);
 
   /* Semantic */
   --success: #22c55e;
   --warning: #f59e0b;
-  --destructive: #ef4444;
+  --destructive: oklch(0.704 0.191 22.216);
 
   /* Charts */
   --chart-sales: #60a5fa;
   --chart-profit: #4ade80;
 
   /* Dashboard */
-  --sidebar: #131519;
-  --sidebar-foreground: #f4f4f5;
-  --sidebar-border: #25282e;
+  --sidebar: oklch(0.205 0 0);
+  --sidebar-foreground: oklch(0.985 0 0);
+  --sidebar-border: oklch(1 0 0 / 10%);
 
   --header: rgba(23, 25, 29, 0.72);
   --header-border: rgba(55, 58, 65, 0.7);
 
   --card-border: #292c32;
+
+  --chart-1: oklch(0.87 0 0);
+
+  --chart-2: oklch(0.556 0 0);
+
+  --chart-3: oklch(0.439 0 0);
+
+  --chart-4: oklch(0.371 0 0);
+
+  --chart-5: oklch(0.269 0 0);
+
+  --sidebar-primary: oklch(0.488 0.243 264.376);
+
+  --sidebar-primary-foreground: oklch(0.985 0 0);
+
+  --sidebar-accent: oklch(0.269 0 0);
+
+  --sidebar-accent-foreground: oklch(0.985 0 0);
+
+  --sidebar-ring: oklch(0.556 0 0);
 }
 
 /* =========================================================
@@ -177,8 +263,6 @@ html {
 body {
   margin: 0;
   min-height: 100vh;
-  background: var(--background);
-  color: var(--foreground);
   font-family: sans-serif;
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
@@ -198,4 +282,304 @@ button {
 ::selection {
   background: var(--foreground);
   color: var(--background);
+}
+
+/* =========================================================
+   Persian Date Picker
+   ========================================================= */
+
+.persian-date-picker {
+  --rmdp-primary: hsl(var(--primary));
+  --rmdp-secondary: hsl(var(--muted-foreground));
+  --rmdp-selected: hsl(var(--primary));
+  --rmdp-today: hsl(var(--primary));
+  --rmdp-hover: hsl(var(--accent));
+  --rmdp-background: hsl(var(--background));
+  --rmdp-text: hsl(var(--foreground));
+  --rmdp-border: hsl(var(--border));
+}
+
+/* =========================================================
+   Popup
+   ========================================================= */
+
+.persian-date-picker .rmdp-wrapper {
+  overflow: hidden;
+
+  border: 1px solid hsl(var(--border));
+  border-radius: 0.85rem;
+
+  background: hsl(var(--background));
+  color: hsl(var(--foreground));
+
+  box-shadow:
+    0 18px 45px hsl(0 0% 0% / 0.12),
+    0 8px 18px hsl(0 0% 0% / 0.08),
+    0 2px 5px hsl(0 0% 0% / 0.05);
+
+  backdrop-filter: blur(12px);
+}
+
+/* =========================================================
+   Dark Mode
+   ========================================================= */
+
+.dark .persian-date-picker .rmdp-wrapper {
+  background: #171717;
+  border-color: #2a2a2a;
+
+  box-shadow:
+    0 24px 60px rgb(0 0 0 / 0.55),
+    0 10px 25px rgb(0 0 0 / 0.45),
+    0 2px 8px rgb(0 0 0 / 0.35);
+}
+
+.dark .persian-date-picker .rmdp-calendar {
+  background: #171717;
+}
+
+.dark .persian-date-picker .rmdp-time-picker {
+  background: #171717;
+  border-top-color: #2a2a2a;
+}
+
+/* =========================================================
+   Calendar
+   ========================================================= */
+
+.persian-date-picker .rmdp-calendar {
+  padding: 0.75rem;
+  background: hsl(var(--background));
+}
+
+/* Header */
+
+.persian-date-picker .rmdp-header {
+  padding: 0.25rem 0.25rem 0.75rem;
+}
+
+.persian-date-picker .rmdp-header-values {
+  color: hsl(var(--foreground));
+  font-size: 0.875rem;
+  font-weight: 600;
+}
+
+.persian-date-picker .rmdp-header-values span:hover {
+  color: hsl(var(--primary));
+}
+
+/* Navigation */
+
+.persian-date-picker .rmdp-arrow-container {
+  width: 2rem;
+  height: 2rem;
+
+  border-radius: 0.5rem;
+
+  background: transparent;
+
+  transition:
+    background-color 150ms ease,
+    color 150ms ease;
+}
+
+.persian-date-picker .rmdp-arrow-container:hover {
+  background: hsl(var(--accent));
+}
+
+.persian-date-picker .rmdp-arrow {
+  border-color: hsl(var(--muted-foreground));
+}
+
+/* Week days */
+
+.persian-date-picker .rmdp-week-day {
+  color: hsl(var(--muted-foreground));
+  font-size: 0.7rem;
+  font-weight: 500;
+}
+
+/* Days */
+
+.persian-date-picker .rmdp-day span {
+  border-radius: 0.5rem;
+  color: hsl(var(--foreground));
+
+  transition:
+    background-color 150ms ease,
+    color 150ms ease;
+}
+
+.persian-date-picker
+  .rmdp-day:not(.rmdp-disabled):not(.rmdp-deactive):hover
+  span {
+  background: hsl(var(--accent));
+  color: hsl(var(--accent-foreground));
+}
+
+/* Today */
+
+.persian-date-picker .rmdp-today span {
+  border: 1px solid hsl(var(--primary));
+  background: transparent;
+  color: hsl(var(--primary));
+}
+
+/* Selected */
+
+.persian-date-picker .rmdp-selected span {
+  background: hsl(var(--primary));
+  color: hsl(var(--primary-foreground));
+  box-shadow: none;
+}
+
+.persian-date-picker .rmdp-selected span:hover {
+  background: hsl(var(--primary));
+  color: hsl(var(--primary-foreground));
+}
+
+/* Disabled */
+
+.persian-date-picker .rmdp-disabled span {
+  color: hsl(var(--muted-foreground) / 0.4);
+}
+
+/* =========================================================
+   Time Picker
+   ========================================================= */
+
+.persian-date-picker .rmdp-time-picker {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+
+  min-height: 4.5rem;
+
+  padding: 0.75rem;
+
+  border-top: 1px solid hsl(var(--border));
+
+  background: hsl(var(--background));
+}
+
+/* Dark */
+
+.dark .persian-date-picker .rmdp-time-picker {
+  background: #171717;
+  border-top-color: #2a2a2a;
+}
+
+/* Time controls */
+
+.persian-date-picker .rmdp-time-picker div {
+  color: hsl(var(--foreground));
+}
+
+/* Time inputs */
+
+.persian-date-picker .rmdp-time-picker input {
+  width: 3rem;
+  height: 2.4rem;
+
+  border: 1px solid hsl(var(--border));
+  border-radius: 0.55rem;
+
+  background: hsl(var(--background));
+  color: hsl(var(--foreground));
+
+  font-size: 0.875rem;
+  font-weight: 500;
+
+  text-align: center;
+
+  outline: none;
+
+  transition:
+    border-color 150ms ease,
+    background-color 150ms ease,
+    box-shadow 150ms ease;
+}
+
+/* Dark time inputs */
+
+.dark .persian-date-picker .rmdp-time-picker input {
+  background: #202020;
+  border-color: #333333;
+  color: #f5f5f5;
+}
+
+.dark .persian-date-picker .rmdp-time-picker input:hover {
+  background: #252525;
+  border-color: #404040;
+}
+
+/* Focus */
+
+.persian-date-picker .rmdp-time-picker input:focus {
+  border-color: hsl(var(--ring));
+
+  box-shadow:
+    0 0 0 3px hsl(var(--ring) / 0.15),
+    0 2px 6px hsl(0 0% 0% / 0.08);
+}
+
+/* Time arrows */
+
+.persian-date-picker .rmdp-time-picker svg {
+  fill: hsl(var(--muted-foreground));
+}
+
+.dark .persian-date-picker .rmdp-time-picker svg {
+  fill: #a3a3a3;
+}
+
+/* =========================================================
+   Month / Year Picker
+   ========================================================= */
+
+.persian-date-picker .rmdp-month-picker,
+.persian-date-picker .rmdp-year-picker {
+  background: hsl(var(--background));
+}
+
+.dark .persian-date-picker .rmdp-month-picker,
+.dark .persian-date-picker .rmdp-year-picker {
+  background: #171717;
+}
+
+.persian-date-picker .rmdp-month-picker .rmdp-day,
+.persian-date-picker .rmdp-year-picker .rmdp-day {
+  color: hsl(var(--foreground));
+}
+
+.persian-date-picker .rmdp-month-picker .rmdp-day:hover,
+.persian-date-picker .rmdp-year-picker .rmdp-day:hover {
+  background: hsl(var(--accent));
+  color: hsl(var(--accent-foreground));
+}
+
+/* =========================================================
+   Input
+   ========================================================= */
+
+.persian-date-picker input {
+  direction: rtl;
+  cursor: pointer;
+}
+
+.persian-date-picker input:disabled {
+  cursor: not-allowed;
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
+  html {
+    @apply font-sans;
+  }
 }

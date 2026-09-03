@@ -12,8 +12,11 @@ import {
 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 
-import { createOrder } from "@/lib/api/orders";
+import PersianDatePicker from "@/components/ui/PersianDatePicker";
+
+import { ApiError } from "@/lib/api/client";
 import { getCustomers } from "@/lib/api/customers";
+import { createOrder } from "@/lib/api/orders";
 import { getProducts } from "@/lib/api/products";
 
 import type { Customer } from "@/types/customers";
@@ -37,19 +40,6 @@ function formatNumber(value: number) {
 
 function formatMoney(value: number) {
   return `${formatNumber(value)} تومان`;
-}
-
-function getDefaultOrderedAt() {
-  const now = new Date();
-
-  const timezoneOffset =
-    now.getTimezoneOffset() * 60000;
-
-  return new Date(
-    now.getTime() - timezoneOffset,
-  )
-    .toISOString()
-    .slice(0, 16);
 }
 
 export function OrderCreateForm({
@@ -77,16 +67,10 @@ export function OrderCreateForm({
     useState<Customer | null>(null);
 
   const [orderedAt, setOrderedAt] =
-    useState(getDefaultOrderedAt);
+    useState("");
 
   const [items, setItems] =
-    useState<OrderItemForm[]>([
-      {
-        id: crypto.randomUUID(),
-        product: null,
-        quantity: 1,
-      },
-    ]);
+    useState<OrderItemForm[]>([]);
 
   const [note, setNote] =
     useState("");
@@ -108,6 +92,26 @@ export function OrderCreateForm({
 
   /*
    * ----------------------------------------------------------
+   * Initial Client State
+   * ----------------------------------------------------------
+   */
+
+  useEffect(() => {
+    setOrderedAt(
+      new Date().toISOString(),
+    );
+
+    setItems([
+      {
+        id: crypto.randomUUID(),
+        product: null,
+        quantity: 1,
+      },
+    ]);
+  }, []);
+
+  /*
+   * ----------------------------------------------------------
    * Customers
    * ----------------------------------------------------------
    */
@@ -123,7 +127,9 @@ export function OrderCreateForm({
           await getCustomers({
             page: 1,
             pageSize: 20,
-            search: customerSearch.trim() || undefined,
+            search:
+              customerSearch.trim() ||
+              undefined,
             ordering: "name",
           });
 
@@ -167,6 +173,10 @@ export function OrderCreateForm({
    */
 
   useEffect(() => {
+    if (!orderedAt) {
+      return;
+    }
+
     let cancelled = false;
 
     async function loadProducts() {
@@ -177,21 +187,80 @@ export function OrderCreateForm({
           await getProducts({
             page: 1,
             pageSize: 50,
-            search: productSearch.trim() || undefined,
+            search:
+              productSearch.trim() ||
+              undefined,
             ordering: "name",
+            orderedAt:
+              new Date(
+                orderedAt,
+              ).toISOString(),
           });
 
         if (cancelled) {
           return;
         }
 
-        setProducts(
+        const activeProducts =
           response.data.results.filter(
             (product) =>
               product.is_active,
-          ),
+          );
+
+        setProducts(activeProducts);
+
+        /*
+         * ----------------------------------------------------
+         * Validate already selected products
+         * ----------------------------------------------------
+         *
+         * اگر تاریخ سفارش تغییر کرده باشد، ممکن است
+         * Recipe محصولی که قبلاً انتخاب شده دیگر معتبر نباشد.
+         *
+         * در این حالت انتخاب محصول را پاک می‌کنیم.
+         */
+
+        const validProductIds =
+          new Set(
+            activeProducts
+              .filter(
+                (product) =>
+                  product.has_valid_recipe !==
+                  false,
+              )
+              .map(
+                (product) =>
+                  product.id,
+              ),
+          );
+
+        setItems((current) =>
+          current.map((item) => {
+            if (
+              !item.product
+            ) {
+              return item;
+            }
+
+            if (
+              !validProductIds.has(
+                item.product.id,
+              )
+            ) {
+              return {
+                ...item,
+                product: null,
+              };
+            }
+
+            return item;
+          }),
         );
       } catch (error) {
+        if (cancelled) {
+          return;
+        }
+
         console.error(
           "Products error:",
           error,
@@ -212,7 +281,7 @@ export function OrderCreateForm({
       cancelled = true;
       window.clearTimeout(timeout);
     };
-  }, [productSearch]);
+  }, [productSearch, orderedAt]);
 
   /*
    * ----------------------------------------------------------
@@ -289,6 +358,12 @@ export function OrderCreateForm({
     itemId: string,
     product: Product,
   ) {
+    if (
+      product.has_valid_recipe === false
+    ) {
+      return;
+    }
+
     setItems((current) =>
       current.map((item) =>
         item.id === itemId
@@ -317,6 +392,13 @@ export function OrderCreateForm({
 
     setError(null);
     setFieldErrors({});
+
+    if (!orderedAt) {
+      setError(
+        "تاریخ سفارش الزامی است.",
+      );
+      return;
+    }
 
     if (items.length === 0) {
       setError(
@@ -347,9 +429,10 @@ export function OrderCreateForm({
             selectedCustomer?.id ??
             null,
 
-          ordered_at: new Date(
-            orderedAt,
-          ).toISOString(),
+          ordered_at:
+            new Date(
+              orderedAt,
+            ).toISOString(),
 
           items: items.map((item) => ({
             product:
@@ -366,6 +449,79 @@ export function OrderCreateForm({
         "Create order error:",
         error,
       );
+
+      /*
+       * ------------------------------------------------------
+       * API Error
+       * ------------------------------------------------------
+       */
+
+      if (error instanceof ApiError) {
+        console.error(
+          "Create order status:",
+          error.status,
+        );
+
+        console.error(
+          "Create order errors:",
+          error.errors,
+        );
+
+        setError(error.message);
+
+        if (
+          typeof error.errors ===
+            "object" &&
+          error.errors !== null
+        ) {
+          const normalizedErrors: Record<
+            string,
+            string
+          > = {};
+
+          const errors =
+            error.errors as Record<
+              string,
+              unknown
+            >;
+
+          for (const [
+            field,
+            value,
+          ] of Object.entries(errors)) {
+            if (Array.isArray(value)) {
+              const message = value.find(
+                (item) =>
+                  typeof item ===
+                  "string",
+              );
+
+              if (message) {
+                normalizedErrors[
+                  field
+                ] = message;
+              }
+            } else if (
+              typeof value === "string"
+            ) {
+              normalizedErrors[field] =
+                value;
+            }
+          }
+
+          setFieldErrors(
+            normalizedErrors,
+          );
+        }
+
+        return;
+      }
+
+      /*
+       * ------------------------------------------------------
+       * Unknown / non-API Error
+       * ------------------------------------------------------
+       */
 
       setError(
         error instanceof Error
@@ -483,7 +639,8 @@ export function OrderCreateForm({
                     <div className="flex items-center justify-center py-6">
                       <Loader2 className="size-4 animate-spin text-muted-foreground" />
                     </div>
-                  ) : customers.length === 0 ? (
+                  ) : customers.length ===
+                    0 ? (
                     <p className="px-3 py-6 text-center text-xs text-muted-foreground">
                       مشتری فعالی پیدا نشد.
                     </p>
@@ -546,28 +703,14 @@ export function OrderCreateForm({
               تاریخ سفارش
             </label>
 
-            <input
-              id="ordered-at"
-              type="datetime-local"
-              value={orderedAt}
-              onChange={(event) =>
-                setOrderedAt(
-                  event.target.value,
-                )
-              }
-              className="
-                mt-2 h-11 w-full
-                rounded-lg
-                border border-input
-                bg-background
-                px-3
-                text-sm
-                outline-none
-                focus:border-ring
-                focus:ring-2
-                focus:ring-ring/20
-              "
-            />
+            <div className="mt-2">
+              <PersianDatePicker
+                value={orderedAt}
+                onChange={setOrderedAt}
+                placeholder="انتخاب تاریخ سفارش"
+                disabled={submitting}
+              />
+            </div>
           </div>
         </div>
       </section>
@@ -606,7 +749,8 @@ export function OrderCreateForm({
                   {/* Product */}
                   <div className="relative">
                     <label className="text-xs font-medium text-muted-foreground">
-                      محصول {formatNumber(index + 1)}
+                      محصول{" "}
+                      {formatNumber(index + 1)}
                     </label>
 
                     <button
@@ -702,43 +846,65 @@ export function OrderCreateForm({
                             </p>
                           ) : (
                             products.map(
-                              (product) => (
-                                <button
-                                  key={
-                                    product.id
-                                  }
-                                  type="button"
-                                  onClick={() =>
-                                    selectProduct(
-                                      item.id,
-                                      product,
-                                    )
-                                  }
-                                  className="
-                                    flex w-full
-                                    items-center
-                                    justify-between
-                                    gap-4
-                                    rounded-lg
-                                    px-3 py-2.5
-                                    text-right
-                                    transition-colors
-                                    hover:bg-accent
-                                  "
-                                >
-                                  <span className="truncate text-sm font-medium">
-                                    {product.name}
-                                  </span>
+                              (product) => {
+                                const hasValidRecipe =
+                                  product.has_valid_recipe !==
+                                    false;
 
-                                  <span className="shrink-0 text-xs text-muted-foreground">
-                                    {formatMoney(
-                                      Number(
-                                        product.selling_price,
-                                      ),
-                                    )}
-                                  </span>
-                                </button>
-                              ),
+                                return (
+                                  <button
+                                    key={
+                                      product.id
+                                    }
+                                    type="button"
+                                    disabled={
+                                      !hasValidRecipe
+                                    }
+                                    onClick={() =>
+                                      selectProduct(
+                                        item.id,
+                                        product,
+                                      )
+                                    }
+                                    className={`
+                                      flex w-full
+                                      items-center justify-between
+                                      gap-4
+                                      rounded-lg
+                                      px-3 py-2.5
+                                      text-right
+                                      transition-colors
+                                      ${
+                                        hasValidRecipe
+                                          ? "hover:bg-accent"
+                                          : "cursor-not-allowed opacity-50"
+                                      }
+                                    `}
+                                  >
+                                    <div className="min-w-0">
+                                      <span className="block truncate text-sm font-medium">
+                                        {
+                                          product.name
+                                        }
+                                      </span>
+
+                                      {!hasValidRecipe && (
+                                        <span className="mt-0.5 block text-xs text-destructive">
+                                          بدون دستور تهیه معتبر
+                                        </span>
+                                      )}
+                                    </div>
+
+                                    <span className="shrink-0 text-xs text-muted-foreground">
+                                      {formatMoney(
+                                        Number(
+                                          product.selling_price,
+                                        ),
+                                      )}
+                                    </span>
+                                  </button>
+                                );
+                              },
                             )
                           )}
                         </div>
@@ -961,7 +1127,11 @@ export function OrderCreateForm({
 
         <button
           type="submit"
-          disabled={submitting}
+          disabled={
+            submitting ||
+            !orderedAt ||
+            items.length === 0
+          }
           className="
             inline-flex h-11
             items-center justify-center gap-2

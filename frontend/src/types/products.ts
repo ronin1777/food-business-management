@@ -5,6 +5,7 @@ export type Product = {
   is_active: boolean;
   created_at: string;
   updated_at: string;
+  has_valid_recipe?: boolean;
 };
 
 export type ProductsPagination = {
@@ -26,4 +27,5 @@ export type ProductListParams = {
   pageSize?: number;
   search?: string;
   ordering?: string;
+  orderedAt?: string;
 };

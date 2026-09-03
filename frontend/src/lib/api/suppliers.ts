@@ -1,6 +1,7 @@
 import { apiClient } from "./client";
 
 import type {
+  CreateSupplierResponse,
   Supplier,
   SupplierAccountResponse,
   SupplierDetail,
@@ -75,8 +76,8 @@ export type CreateSupplierPayload = {
 
 export async function createSupplier(
   payload: CreateSupplierPayload,
-): Promise<SupplierDetail> {
-  return apiClient<SupplierDetail>(
+): Promise<CreateSupplierResponse> {
+  return apiClient<CreateSupplierResponse>(
     "/api/suppliers/",
     {
       method: "POST",

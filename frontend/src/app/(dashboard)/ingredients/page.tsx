@@ -89,6 +89,7 @@ export default function IngredientsPage() {
               search.trim() || undefined,
             ordering,
           });
+          console.log("INGREDIENTS LIST RESPONSE:", response);
 
         if (cancelled) {
           return;

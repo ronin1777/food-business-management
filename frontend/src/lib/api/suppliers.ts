@@ -95,8 +95,8 @@ export type UpdateSupplierPayload = {
 export async function updateSupplier(
   supplierId: number,
   payload: UpdateSupplierPayload,
-): Promise<SupplierDetail> {
-  return apiClient<SupplierDetail>(
+): Promise<SupplierDetailResponse> {
+  return apiClient<SupplierDetailResponse>(
     `/api/suppliers/${supplierId}/`,
     {
       method: "PATCH",

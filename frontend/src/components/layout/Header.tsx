@@ -43,7 +43,11 @@ export function Header() {
     async function loadUser() {
       try {
         const response = await me();
-        setUser(response.data.user);
+        if(!response.data) {
+          setUser(null)
+          return
+        }
+        setUser(response.data.user)
       } catch (error) {
         console.error(
           "Failed to load current user:",

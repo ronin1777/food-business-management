@@ -79,7 +79,7 @@ export default function EditSupplierPage({
           return;
         }
 
-        setSupplier(response);
+        setSupplier(response.data);
       } catch (error) {
         if (cancelled) {
           return;
@@ -128,7 +128,7 @@ export default function EditSupplierPage({
         );
 
       router.push(
-        `/suppliers/${updatedSupplier.id}`,
+        `/suppliers/${updatedSupplier.data.id}`,
       );
     } catch (error) {
       console.error(

@@ -158,7 +158,7 @@ export default function SupplierTransactionsPage({
             supplierId,
           );
 
-        setSupplier(response);
+        setSupplier(response.data);
       } catch (error) {
         console.error(
           "Supplier error:",

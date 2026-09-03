@@ -10,6 +10,7 @@ type ReportDateRangeProps = {
   onDateFromChange: (value: string) => void;
   onDateToChange: (value: string) => void;
   onApply: () => void;
+  onReset: () => void;
   loading?: boolean;
 };
 
@@ -19,6 +20,7 @@ export default function ReportDateRange({
   onDateFromChange,
   onDateToChange,
   onApply,
+  onReset,
   loading = false,
 }: ReportDateRangeProps) {
   return (
@@ -53,6 +55,7 @@ export default function ReportDateRange({
         <div className="flex items-center gap-2">
           <button
             type="button"
+            onClick={onReset}
             className="
               inline-flex
               h-10

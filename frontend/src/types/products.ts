@@ -29,3 +29,11 @@ export type ProductListParams = {
   ordering?: string;
   orderedAt?: string;
 };
+
+
+export type ProductResponse = {
+  success: boolean;
+  data: Product;
+  message: string | null;
+  errors: unknown;
+};

@@ -1,42 +1,60 @@
-"use client";
+// "use client";
 
-import { useEffect } from "react";
-import { useRouter } from "next/navigation";
+// import { useEffect } from "react";
+// import { useRouter } from "next/navigation";
 
-import { me } from "@/lib/api/auth";
+// import { me } from "@/lib/api/auth";
 
-export default function HomePage() {
-  const router = useRouter();
+// export default function HomePage() {
+//   const router = useRouter();
 
-  useEffect(() => {
-    let mounted = true;
+//   useEffect(() => {
+//     let mounted = true;
 
-    async function checkAuthentication() {
-      try {
-        await me();
+//     async function checkAuthentication() {
+//       try {
+//         await me();
 
-        if (mounted) {
-          router.replace("/dashboard");
-        }
-      } catch {
-        if (mounted) {
-          router.replace("/login");
-        }
-      }
-    }
+//         if (mounted) {
+//           router.replace("/dashboard");
+//         }
+//       } catch {
+//         if (mounted) {
+//           router.replace("/login");
+//         }
+//       }
+//     }
 
-    checkAuthentication();
+//     checkAuthentication();
 
-    return () => {
-      mounted = false;
-    };
-  }, [router]);
+//     return () => {
+//       mounted = false;
+//     };
+//   }, [router]);
 
-  return (
-    <main className="flex min-h-screen items-center justify-center bg-background">
-      <div className="text-sm text-muted-foreground">
-        در حال بررسی حساب کاربری...
-      </div>
-    </main>
-  );
+//   return (
+//     <main className="flex min-h-screen items-center justify-center bg-background">
+//       <div className="text-sm text-muted-foreground">
+//         در حال بررسی حساب کاربری...
+//       </div>
+//     </main>
+//   );
+// }
+
+
+
+
+import { redirect } from "next/navigation";
+
+import { meServer } from "@/lib/api/server-auth";
+
+export default async function HomePage() {
+  try {
+    await meServer();
+  } catch {
+    redirect("/login");
+  }
+
+  redirect("/dashboard");
 }
+

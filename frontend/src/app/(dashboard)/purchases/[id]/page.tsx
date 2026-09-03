@@ -78,17 +78,10 @@ export default function PurchaseDetailPage({
 
       const response = await getPurchase(purchaseId);
 
-      console.log("========== PURCHASE DEBUG ==========");
 
-      console.log("Full purchase response:", response);
-
-      console.log("created_at:", response.created_at);
-      console.log("purchased_at:", response.purchased_at);
-      console.log("updated_at:", response.updated_at);
-
-      const createdDate = new Date(response.created_at);
-      const purchasedDate = new Date(response.purchased_at);
-      const updatedDate = new Date(response.updated_at);
+      const createdDate = new Date(response.data.created_at);
+      const purchasedDate = new Date(response.data.purchased_at);
+      const updatedDate = new Date(response.data.updated_at);
 
       console.log("createdDate:", createdDate);
       console.log("purchasedDate:", purchasedDate);

@@ -3,6 +3,7 @@ import { apiClient } from "./client";
 import type {
   Product,
   ProductListParams,
+  ProductResponse,
   ProductsResponse,
 } from "@/types/products";
 
@@ -70,8 +71,8 @@ export type CreateProductPayload = {
 
 export async function createProduct(
   payload: CreateProductPayload,
-): Promise<Product> {
-  return apiClient<Product>(
+): Promise<ProductResponse> {
+  return apiClient<ProductResponse>(
     "/api/products/",
     {
       method: "POST",

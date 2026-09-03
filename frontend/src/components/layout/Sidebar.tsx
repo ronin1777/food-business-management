@@ -148,45 +148,51 @@ function SidebarContent({
     );
   }
 
+  function isPathActive(
+    href: string,
+  ) {
+    return (
+      pathname === href ||
+      pathname.startsWith(`${href}/`)
+    );
+  }
+
   return (
     <div
       className="
         flex h-full w-full flex-col
-        bg-sidebar text-sidebar-foreground
-        shadow-[8px_0_30px_rgba(0,0,0,0.04)]
-        dark:shadow-[10px_0_35px_rgba(0,0,0,0.28)]
+        bg-sidebar
+        text-sidebar-foreground
       "
     >
       {/* Brand */}
-      <div className="flex h-20 shrink-0 items-center px-5">
-        <div className="flex items-center gap-3">
-          <div
-            className="
-              flex size-9 items-center
-              justify-center rounded-lg
-              bg-primary
-              text-sm font-bold
-              text-primary-foreground
-              shadow-sm
-            "
-          >
-            ک
-          </div>
+      <div
+        className="
+          flex h-20 shrink-0
+          items-center
+          px-4 sm:px-5
+        "
+      >
+        <div className="min-w-0">
+          <p className="truncate text-sm font-semibold">
+            مدیریت کسب‌وکار
+          </p>
 
-          <div>
-            <p className="text-sm font-semibold">
-              مدیریت کسب‌وکار
-            </p>
-
-            <p className="mt-0.5 text-xs text-muted-foreground">
-              پنل مدیریت
-            </p>
-          </div>
+          <p className="mt-1 text-xs text-muted-foreground">
+            پنل مدیریت
+          </p>
         </div>
       </div>
 
       {/* Navigation */}
-      <nav className="flex-1 overflow-y-auto px-3 pb-4">
+      <nav
+        className="
+          flex-1
+          overflow-y-auto
+          px-2.5 sm:px-3
+          pb-4
+        "
+      >
         <div className="space-y-1">
           {navigation.map((item) => {
             const Icon = item.icon;
@@ -198,7 +204,8 @@ function SidebarContent({
               const isGroupActive =
                 item.children.some(
                   (child) =>
-                    pathname === child.href ||
+                    pathname ===
+                      child.href ||
                     pathname.startsWith(
                       `${child.href}/`,
                     ),
@@ -212,7 +219,7 @@ function SidebarContent({
               return (
                 <div
                   key={item.label}
-                  className="pt-2"
+                  className="pt-2 first:pt-0"
                 >
                   {/* Group Header */}
                   <button
@@ -226,8 +233,8 @@ function SidebarContent({
                     className={[
                       "flex w-full items-center justify-between",
                       "rounded-lg px-3 py-2.5",
-                      "text-xs font-medium",
-                      "transition-all duration-200",
+                      "text-sm font-medium",
+                      "transition-colors duration-150",
                       "hover:bg-accent/70",
                       "active:scale-[0.99]",
                       isGroupActive ||
@@ -236,17 +243,18 @@ function SidebarContent({
                         : "text-muted-foreground",
                     ].join(" ")}
                   >
-                    <div className="flex items-center gap-3">
+                    <span className="flex items-center gap-3">
                       <Icon className="size-4 shrink-0" />
 
                       <span>
                         {item.label}
                       </span>
-                    </div>
+                    </span>
 
                     <ChevronDown
                       className={[
                         "size-3.5 shrink-0",
+                        "text-muted-foreground",
                         "transition-transform duration-200",
                         isOpen
                           ? "rotate-180"
@@ -258,7 +266,8 @@ function SidebarContent({
                   {/* Children */}
                   <div
                     className={[
-                      "grid transition-[grid-template-rows,opacity]",
+                      "grid",
+                      "transition-[grid-template-rows,opacity]",
                       "duration-200 ease-in-out",
                       isOpen
                         ? "grid-rows-[1fr] opacity-100"
@@ -266,14 +275,21 @@ function SidebarContent({
                     ].join(" ")}
                   >
                     <div className="min-h-0 overflow-hidden">
-                      <div className="mr-7 mt-1 space-y-0.5 border-r border-sidebar-border/80 pr-2">
+                      <div
+                        className="
+                          mr-6
+                          mt-1
+                          space-y-0.5
+                          border-r
+                          border-sidebar-border/70
+                          pr-2
+                        "
+                      >
                         {item.children.map(
                           (child) => {
                             const isActive =
-                              pathname ===
-                                child.href ||
-                              pathname.startsWith(
-                                `${child.href}/`,
+                              isPathActive(
+                                child.href,
                               );
 
                             return (
@@ -288,11 +304,26 @@ function SidebarContent({
                                   onNavigate
                                 }
                                 className={[
-                                  "block rounded-md px-3 py-2",
-                                  "text-sm transition-all duration-150",
+                                  "block rounded-md",
+                                  "px-3 py-2",
+                                  "text-sm",
+                                  "transition-colors duration-150",
                                   isActive
-                                    ? "bg-accent font-medium text-accent-foreground shadow-sm"
-                                    : "text-muted-foreground hover:bg-accent/70 hover:text-foreground",
+                                    ? [
+                                        "bg-accent",
+                                        "font-medium",
+                                        "text-accent-foreground",
+                                        "shadow-sm",
+                                      ].join(
+                                        " ",
+                                      )
+                                    : [
+                                        "text-muted-foreground",
+                                        "hover:bg-accent/70",
+                                        "hover:text-foreground",
+                                      ].join(
+                                        " ",
+                                      ),
                                 ].join(" ")}
                               >
                                 {
@@ -313,10 +344,11 @@ function SidebarContent({
              * Single Navigation Item
              */
             const isActive =
-              pathname === item.href ||
-              pathname.startsWith(
-                `${item.href}/`,
-              );
+              item.href
+                ? isPathActive(
+                    item.href,
+                  )
+                : false;
 
             return (
               <Link
@@ -324,12 +356,23 @@ function SidebarContent({
                 href={item.href!}
                 onClick={onNavigate}
                 className={[
-                  "flex items-center gap-3 rounded-lg",
+                  "flex items-center gap-3",
+                  "rounded-lg",
                   "px-3 py-2.5",
-                  "text-sm transition-all duration-150",
+                  "text-sm",
+                  "transition-colors duration-150",
                   isActive
-                    ? "bg-accent font-medium text-accent-foreground shadow-sm"
-                    : "text-muted-foreground hover:bg-accent/70 hover:text-foreground",
+                    ? [
+                        "bg-accent",
+                        "font-medium",
+                        "text-accent-foreground",
+                        "shadow-sm",
+                      ].join(" ")
+                    : [
+                        "text-muted-foreground",
+                        "hover:bg-accent/70",
+                        "hover:text-foreground",
+                      ].join(" "),
                 ].join(" ")}
               >
                 <Icon className="size-4 shrink-0" />
@@ -342,21 +385,44 @@ function SidebarContent({
       </nav>
 
       {/* Settings */}
-      <div className="shrink-0 px-3 pb-4">
-        <div className="border-t border-sidebar-border/70 pt-3">
+      <div
+        className="
+          shrink-0
+          px-2.5 sm:px-3
+          pb-3 sm:pb-4
+        "
+      >
+        <div
+          className="
+            border-t
+            border-sidebar-border/70
+            pt-3
+          "
+        >
           <Link
             href="/settings"
             onClick={onNavigate}
             className={[
-              "flex items-center gap-3 rounded-lg",
+              "flex items-center gap-3",
+              "rounded-lg",
               "px-3 py-2.5",
-              "text-sm transition-all duration-150",
+              "text-sm",
+              "transition-colors duration-150",
               pathname === "/settings" ||
               pathname.startsWith(
                 "/settings/",
               )
-                ? "bg-accent font-medium text-accent-foreground shadow-sm"
-                : "text-muted-foreground hover:bg-accent/70 hover:text-foreground",
+                ? [
+                    "bg-accent",
+                    "font-medium",
+                    "text-accent-foreground",
+                    "shadow-sm",
+                  ].join(" ")
+                : [
+                    "text-muted-foreground",
+                    "hover:bg-accent/70",
+                    "hover:text-foreground",
+                  ].join(" "),
             ].join(" ")}
           >
             <Settings className="size-4 shrink-0" />
@@ -369,6 +435,9 @@ function SidebarContent({
   );
 }
 
+/*
+ * Desktop Sidebar
+ */
 export function Sidebar() {
   return (
     <aside
@@ -399,6 +468,9 @@ export function Sidebar() {
   );
 }
 
+/*
+ * Mobile Sidebar
+ */
 type MobileSidebarProps = {
   open: boolean;
   onClose: () => void;
@@ -430,7 +502,8 @@ export function MobileSidebar({
       <aside
         className="
           fixed inset-y-0 right-0 z-50
-          w-[280px] max-w-[85vw]
+          w-[280px]
+          max-w-[85vw]
           p-2
         "
       >

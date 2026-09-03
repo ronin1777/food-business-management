@@ -21,12 +21,12 @@ import ReportDateRange from "../ReportDateRange";
 import ReportKpiCard from "../ReportKpiCard";
 import ReportSection from "../ReportSection";
 
-import { getSalesReport } from "@/lib/api/reports";
+import { getProfitabilityReport } from "@/lib/api/reports";
 
 import type {
-  DailySales,
-  SalesReport as SalesReportData,
-  SalesTopProduct,
+  DailyProfitability,
+  ProfitabilityReport as ProfitabilityReportData,
+  ProfitabilityTopProduct,
 } from "@/types/reports";
 
 function getDateOnly(value: string): string {
@@ -103,32 +103,42 @@ const chartConfig = {
     label: "فروش",
     color: "var(--primary)",
   },
-  order_count: {
-    label: "تعداد سفارش",
+  material_cost: {
+    label: "هزینه مواد",
     color: "var(--muted-foreground)",
+  },
+  gross_profit: {
+    label: "سود ناخالص",
+    color: "var(--chart-2)",
   },
 } satisfies ChartConfig;
 
-export default function SalesReport() {
-  const [dateFrom, setDateFrom] = useState("");
-  const [dateTo, setDateTo] = useState("");
+export default function ProfitabilityReport() {
+  const defaultDateRange = getDefaultDateRange();
+
+  const [dateFrom, setDateFrom] = useState(
+    defaultDateRange.dateFrom,
+  );
+
+  const [dateTo, setDateTo] = useState(
+    defaultDateRange.dateTo,
+  );
+
+  const [appliedDateFrom, setAppliedDateFrom] =
+    useState(defaultDateRange.dateFrom);
+
+  const [appliedDateTo, setAppliedDateTo] =
+    useState(defaultDateRange.dateTo);
 
   const [report, setReport] =
-    useState<SalesReportData | null>(null);
+    useState<ProfitabilityReportData | null>(null);
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
-  useEffect(() => {
-    const defaults = getDefaultDateRange();
-
-    setDateFrom(defaults.dateFrom);
-    setDateTo(defaults.dateTo);
-  }, []);
-
   async function loadReport(
-    from = dateFrom,
-    to = dateTo,
+    from: string,
+    to: string,
   ) {
     const apiDateFrom = getDateOnly(from);
     const apiDateTo = getDateOnly(to);
@@ -148,7 +158,7 @@ export default function SalesReport() {
     setError("");
 
     try {
-      const response = await getSalesReport({
+      const response = await getProfitabilityReport({
         dateFrom: apiDateFrom,
         dateTo: apiDateTo,
       });
@@ -160,11 +170,30 @@ export default function SalesReport() {
       setError(
         err instanceof Error
           ? err.message
-          : "دریافت گزارش فروش با خطا مواجه شد.",
+          : "دریافت گزارش سودآوری با خطا مواجه شد.",
       );
     } finally {
       setLoading(false);
     }
+  }
+
+  function handleApply() {
+    const apiDateFrom = getDateOnly(dateFrom);
+    const apiDateTo = getDateOnly(dateTo);
+
+    if (!apiDateFrom || !apiDateTo) {
+      return;
+    }
+
+    if (apiDateFrom > apiDateTo) {
+      setError(
+        "تاریخ شروع نمی‌تواند بعد از تاریخ پایان باشد.",
+      );
+      return;
+    }
+
+    setAppliedDateFrom(dateFrom);
+    setAppliedDateTo(dateTo);
   }
 
   function handleReset() {
@@ -172,35 +201,35 @@ export default function SalesReport() {
 
     setDateFrom(defaults.dateFrom);
     setDateTo(defaults.dateTo);
-
-    void loadReport(
-      defaults.dateFrom,
-      defaults.dateTo,
-    );
+    setAppliedDateFrom(defaults.dateFrom);
+    setAppliedDateTo(defaults.dateTo);
   }
 
   useEffect(() => {
-    if (!dateFrom || !dateTo) {
-      return;
-    }
+    void loadReport(
+      appliedDateFrom,
+      appliedDateTo,
+    );
 
-    void loadReport(dateFrom, dateTo);
+    // گزارش با بازه اعمال‌شده همگام می‌شود.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+  }, [appliedDateFrom, appliedDateTo]);
 
-    // تغییر تاریخ توسط کاربر فقط با دکمه «اعمال»
-    // گزارش را refresh می‌کند.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [dateFrom, dateTo]);
-
-  const dailySales = useMemo(() => {
+  const dailyProfitability = useMemo(() => {
     if (!report) {
       return [];
     }
 
-    return report.daily_sales.map(
-      (item: DailySales) => ({
+    return report.daily_profitability.map(
+      (item: DailyProfitability) => ({
         ...item,
         salesNumber: Number(item.sales),
-        orderCountNumber: Number(item.order_count),
+        materialCostNumber: Number(
+          item.material_cost,
+        ),
+        grossProfitNumber: Number(
+          item.gross_profit,
+        ),
         dateLabel: formatChartDate(item.date),
       }),
     );
@@ -213,7 +242,7 @@ export default function SalesReport() {
         dateTo={dateTo}
         onDateFromChange={setDateFrom}
         onDateToChange={setDateTo}
-        onApply={() => void loadReport()}
+        onApply={handleApply}
         onReset={handleReset}
         loading={loading}
       />
@@ -225,11 +254,10 @@ export default function SalesReport() {
       )}
 
       {loading && !report ? (
-        <SalesReportSkeleton />
+        <ProfitabilityReportSkeleton />
       ) : report ? (
         <>
-          {/* KPI */}
-          <div className="grid gap-4 md:grid-cols-3">
+          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
             <ReportKpiCard
               title="فروش کل"
               value={formatMoney(
@@ -246,6 +274,73 @@ export default function SalesReport() {
                 report.summary.total_sales.direction
               }
               tone="neutral"
+            />
+
+            <ReportKpiCard
+              title="هزینه مواد اولیه"
+              value={formatMoney(
+                report.summary.total_material_cost
+                  .current,
+              )}
+              previousValue={formatMoney(
+                report.summary.total_material_cost
+                  .previous,
+              )}
+              change={formatPercentage(
+                report.summary.total_material_cost
+                  .percentage_change,
+              )}
+              direction={
+                report.summary.total_material_cost
+                  .direction
+              }
+              tone="neutral"
+            />
+
+            <ReportKpiCard
+              title="سود ناخالص"
+              value={formatMoney(
+                report.summary.gross_profit.current,
+              )}
+              previousValue={formatMoney(
+                report.summary.gross_profit.previous,
+              )}
+              change={formatPercentage(
+                report.summary.gross_profit
+                  .percentage_change,
+              )}
+              direction={
+                report.summary.gross_profit.direction
+              }
+              tone={
+                report.summary.gross_profit.direction ===
+                "down"
+                  ? "negative"
+                  : "positive"
+              }
+            />
+
+            <ReportKpiCard
+              title="حاشیه سود"
+              value={formatPercentage(
+                report.summary.gross_margin.current,
+              )}
+              previousValue={formatPercentage(
+                report.summary.gross_margin.previous,
+              )}
+              change={formatPercentage(
+                report.summary.gross_margin
+                  .percentage_change,
+              )}
+              direction={
+                report.summary.gross_margin.direction
+              }
+              tone={
+                report.summary.gross_margin.direction ===
+                "down"
+                  ? "negative"
+                  : "positive"
+              }
             />
 
             <ReportKpiCard
@@ -269,10 +364,12 @@ export default function SalesReport() {
             <ReportKpiCard
               title="میانگین ارزش سفارش"
               value={formatMoney(
-                report.summary.average_order_value.current,
+                report.summary.average_order_value
+                  .current,
               )}
               previousValue={formatMoney(
-                report.summary.average_order_value.previous,
+                report.summary.average_order_value
+                  .previous,
               )}
               change={formatPercentage(
                 report.summary.average_order_value
@@ -286,20 +383,19 @@ export default function SalesReport() {
             />
           </div>
 
-          {/* Sales chart */}
           <ReportSection
-            title="روند فروش"
-            description="میزان فروش و تعداد سفارش‌های روزانه در بازه انتخاب‌شده"
+            title="روند سودآوری"
+            description="فروش، هزینه مواد اولیه و سود ناخالص روزانه در بازه انتخاب‌شده"
           >
-            {dailySales.length > 0 ? (
+            {dailyProfitability.length > 0 ? (
               <div className="w-full overflow-hidden">
                 <ChartContainer
                   config={chartConfig}
-                  className="h-[320px] w-full"
+                  className="h-[340px] w-full"
                 >
                   <LineChart
                     accessibilityLayer
-                    data={dailySales}
+                    data={dailyProfitability}
                     margin={{
                       top: 12,
                       right: 12,
@@ -321,23 +417,10 @@ export default function SalesReport() {
                     />
 
                     <YAxis
-                      yAxisId="sales"
                       tickLine={false}
                       axisLine={false}
                       tickMargin={8}
-                      width={70}
-                      tickFormatter={(value) =>
-                        formatNumber(value)
-                      }
-                    />
-
-                    <YAxis
-                      yAxisId="orders"
-                      orientation="right"
-                      tickLine={false}
-                      axisLine={false}
-                      tickMargin={8}
-                      width={45}
+                      width={80}
                       tickFormatter={(value) =>
                         formatNumber(value)
                       }
@@ -352,22 +435,14 @@ export default function SalesReport() {
                             `تاریخ: ${value}`
                           }
                           formatter={(value, name) => {
-                            if (name === "فروش") {
-                              return (
-                                <span className="font-medium">
-                                  {formatMoney(
-                                    Number(value),
-                                  )}
-                                </span>
-                              );
-                            }
-
                             if (
-                              name === "تعداد سفارش"
+                              name === "فروش" ||
+                              name === "هزینه مواد" ||
+                              name === "سود ناخالص"
                             ) {
                               return (
                                 <span className="font-medium">
-                                  {formatNumber(
+                                  {formatMoney(
                                     Number(value),
                                   )}
                                 </span>
@@ -385,7 +460,6 @@ export default function SalesReport() {
                     />
 
                     <Line
-                      yAxisId="sales"
                       type="monotone"
                       dataKey="salesNumber"
                       name="فروش"
@@ -398,11 +472,10 @@ export default function SalesReport() {
                     />
 
                     <Line
-                      yAxisId="orders"
                       type="monotone"
-                      dataKey="orderCountNumber"
-                      name="تعداد سفارش"
-                      stroke="var(--color-order_count)"
+                      dataKey="materialCostNumber"
+                      name="هزینه مواد"
+                      stroke="var(--color-material_cost)"
                       strokeWidth={2}
                       strokeDasharray="5 5"
                       dot={false}
@@ -410,21 +483,32 @@ export default function SalesReport() {
                         r: 4,
                       }}
                     />
+
+                    <Line
+                      type="monotone"
+                      dataKey="grossProfitNumber"
+                      name="سود ناخالص"
+                      stroke="var(--color-gross_profit)"
+                      strokeWidth={2}
+                      dot={false}
+                      activeDot={{
+                        r: 5,
+                      }}
+                    />
                   </LineChart>
                 </ChartContainer>
               </div>
             ) : (
               <EmptyState
-                text="در این بازه داده‌ای برای نمایش فروش وجود ندارد."
+                text="در این بازه داده‌ای برای نمایش سودآوری وجود ندارد."
               />
             )}
           </ReportSection>
 
-          {/* Tables */}
           <div className="grid gap-6 xl:grid-cols-2">
             <ReportSection
-              title="محصولات پرفروش"
-              description="۱۰ محصول برتر بر اساس میزان فروش"
+              title="محصولات پُرسود"
+              description="۱۰ محصول برتر بر اساس سود ناخالص"
             >
               <TopProducts
                 products={report.top_products}
@@ -432,11 +516,11 @@ export default function SalesReport() {
             </ReportSection>
 
             <ReportSection
-              title="فروش روزانه"
-              description="جزئیات فروش و تعداد سفارش‌ها"
+              title="سودآوری روزانه"
+              description="جزئیات فروش، هزینه مواد و سود ناخالص"
             >
-              <DailySalesTable
-                data={report.daily_sales}
+              <DailyProfitabilityTable
+                data={report.daily_profitability}
               />
             </ReportSection>
           </div>
@@ -453,7 +537,7 @@ export default function SalesReport() {
 function TopProducts({
   products,
 }: {
-  products: SalesTopProduct[];
+  products: ProfitabilityTopProduct[];
 }) {
   if (!products.length) {
     return (
@@ -465,7 +549,7 @@ function TopProducts({
 
   return (
     <div className="overflow-x-auto">
-      <table className="w-full min-w-[560px] text-sm">
+      <table className="w-full min-w-[760px] text-sm">
         <thead>
           <tr className="border-b border-border text-right text-xs text-muted-foreground">
             <th className="w-14 pb-3 text-center font-medium">
@@ -477,11 +561,23 @@ function TopProducts({
             </th>
 
             <th className="pb-3 text-left font-medium">
-              تعداد فروش
+              تعداد
             </th>
 
             <th className="pb-3 text-left font-medium">
-              مبلغ فروش
+              فروش
+            </th>
+
+            <th className="pb-3 text-left font-medium">
+              هزینه مواد
+            </th>
+
+            <th className="pb-3 text-left font-medium">
+              سود ناخالص
+            </th>
+
+            <th className="pb-3 text-left font-medium">
+              حاشیه سود
             </th>
           </tr>
         </thead>
@@ -521,8 +617,26 @@ function TopProducts({
                   )}
                 </td>
 
-                <td className="py-3 text-left font-medium tabular-nums">
+                <td className="py-3 text-left tabular-nums">
                   {formatMoney(product.sales)}
+                </td>
+
+                <td className="py-3 text-left tabular-nums">
+                  {formatMoney(
+                    product.material_cost,
+                  )}
+                </td>
+
+                <td className="py-3 text-left font-medium tabular-nums">
+                  {formatMoney(
+                    product.gross_profit,
+                  )}
+                </td>
+
+                <td className="py-3 text-left font-medium tabular-nums">
+                  {formatPercentage(
+                    product.gross_margin,
+                  )}
                 </td>
               </tr>
             );
@@ -555,10 +669,10 @@ function RankBadge({
   );
 }
 
-function DailySalesTable({
+function DailyProfitabilityTable({
   data,
 }: {
-  data: DailySales[];
+  data: DailyProfitability[];
 }) {
   if (!data.length) {
     return (
@@ -570,7 +684,7 @@ function DailySalesTable({
 
   return (
     <div className="overflow-x-auto">
-      <table className="w-full min-w-[460px] text-sm">
+      <table className="w-full min-w-[620px] text-sm">
         <thead>
           <tr className="border-b border-border text-right text-xs text-muted-foreground">
             <th className="pb-3 font-medium">
@@ -579,6 +693,14 @@ function DailySalesTable({
 
             <th className="pb-3 text-left font-medium">
               فروش
+            </th>
+
+            <th className="pb-3 text-left font-medium">
+              هزینه مواد
+            </th>
+
+            <th className="pb-3 text-left font-medium">
+              سود ناخالص
             </th>
 
             <th className="pb-3 text-left font-medium">
@@ -599,6 +721,14 @@ function DailySalesTable({
 
               <td className="py-3 text-left font-medium tabular-nums">
                 {formatMoney(item.sales)}
+              </td>
+
+              <td className="py-3 text-left tabular-nums">
+                {formatMoney(item.material_cost)}
+              </td>
+
+              <td className="py-3 text-left font-medium tabular-nums">
+                {formatMoney(item.gross_profit)}
               </td>
 
               <td className="py-3 text-left tabular-nums">
@@ -626,24 +756,26 @@ function EmptyState({
   );
 }
 
-function SalesReportSkeleton() {
+function ProfitabilityReportSkeleton() {
   return (
     <div className="space-y-6">
-      <div className="grid gap-4 md:grid-cols-3">
-        {[1, 2, 3].map((item) => (
-          <div
-            key={item}
-            className="h-[130px] animate-pulse rounded-xl border border-border bg-card"
-          />
-        ))}
+      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+        {Array.from({ length: 6 }).map(
+          (_, index) => (
+            <div
+              key={index}
+              className="h-[130px] animate-pulse rounded-xl border border-border bg-card"
+            />
+          ),
+        )}
       </div>
 
-      <div className="h-[420px] animate-pulse rounded-xl border border-border bg-card" />
+      <div className="h-[440px] animate-pulse rounded-xl border border-border bg-card" />
 
       <div className="grid gap-6 xl:grid-cols-2">
-        <div className="h-[350px] animate-pulse rounded-xl border border-border bg-card" />
+        <div className="h-[400px] animate-pulse rounded-xl border border-border bg-card" />
 
-        <div className="h-[350px] animate-pulse rounded-xl border border-border bg-card" />
+        <div className="h-[400px] animate-pulse rounded-xl border border-border bg-card" />
       </div>
     </div>
   );

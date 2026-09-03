@@ -7,6 +7,7 @@ import {
 type ReportKpiCardProps = {
   title: string;
   value: string;
+  previousValue?: string | null;
   change?: string | null;
   direction?: "up" | "down" | "unchanged";
   tone?: "positive" | "negative" | "neutral";
@@ -15,6 +16,7 @@ type ReportKpiCardProps = {
 export default function ReportKpiCard({
   title,
   value,
+  previousValue,
   change,
   direction = "unchanged",
   tone = "neutral",
@@ -67,15 +69,28 @@ export default function ReportKpiCard({
           {value}
         </p>
 
-        {change !== undefined && (
-          <div className="mt-2 flex items-center gap-1.5 text-xs">
-            <span className={["font-medium", toneClass].join(" ")}>
-              {change ?? "—"}
-            </span>
+        {(change !== undefined || previousValue !== undefined) && (
+          <div className="mt-2 space-y-1.5">
+            {change !== undefined && (
+              <div className="flex items-center gap-1.5 text-xs">
+                <span className={["font-medium", toneClass].join(" ")}>
+                  {change ?? "—"}
+                </span>
 
-            <span className="text-muted-foreground">
-              نسبت به دوره قبل
-            </span>
+                <span className="text-muted-foreground">
+                  نسبت به دوره قبل
+                </span>
+              </div>
+            )}
+
+            {previousValue !== undefined && (
+              <p className="text-xs text-muted-foreground">
+                دوره قبل:{" "}
+                <span className="font-medium text-foreground/80">
+                  {previousValue ?? "—"}
+                </span>
+              </p>
+            )}
           </div>
         )}
       </div>

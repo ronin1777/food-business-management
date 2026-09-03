@@ -13,6 +13,7 @@ import {
   UserRound,
 } from "lucide-react";
 import {
+  use,
   useEffect,
   useState,
 } from "react";
@@ -100,8 +101,13 @@ function getDirectionClass(
 export default function CustomerDetailPage({
   params,
 }: CustomerDetailPageProps) {
-  const [customerId, setCustomerId] =
-    useState<number | null>(null);
+  const { id } = use(params);
+
+  const customerId = Number(id);
+
+  const isValidCustomerId =
+    Number.isInteger(customerId) &&
+    customerId > 0;
 
   const [customer, setCustomer] =
     useState<CustomerDetail | null>(
@@ -125,27 +131,7 @@ export default function CustomerDetailPage({
     useState<string | null>(null);
 
   useEffect(() => {
-    params.then((value) => {
-      const parsedId = Number(
-        value.id,
-      );
-
-      if (
-        Number.isInteger(parsedId) &&
-        parsedId > 0
-      ) {
-        setCustomerId(parsedId);
-      } else {
-        setError(
-          "شناسه مشتری معتبر نیست.",
-        );
-        setLoading(false);
-      }
-    });
-  }, [params]);
-
-  useEffect(() => {
-    if (!customerId) {
+    if (!isValidCustomerId) {
       return;
     }
 
@@ -214,7 +200,36 @@ export default function CustomerDetailPage({
     return () => {
       cancelled = true;
     };
-  }, [customerId]);
+  }, [
+    customerId,
+    isValidCustomerId,
+  ]);
+
+  if (!isValidCustomerId) {
+    return (
+      <div className="flex min-h-[500px] items-center justify-center">
+        <div className="w-full max-w-md rounded-xl border border-destructive/20 bg-destructive/5 p-6 text-center">
+          <CircleAlert className="mx-auto size-6 text-destructive" />
+
+          <p className="mt-3 text-sm font-medium text-destructive">
+            خطا در دریافت اطلاعات مشتری
+          </p>
+
+          <p className="mt-2 text-sm leading-6 text-destructive/80">
+            شناسه مشتری معتبر نیست.
+          </p>
+
+          <Link
+            href="/customers"
+            className="mt-5 inline-flex items-center gap-2 rounded-lg border border-border bg-background px-3 py-2 text-sm font-medium transition-colors hover:bg-accent"
+          >
+            <ArrowRight className="size-4" />
+            بازگشت به مشتری‌ها
+          </Link>
+        </div>
+      </div>
+    );
+  }
 
   if (loading) {
     return (
@@ -505,9 +520,9 @@ export default function CustomerDetailPage({
           <Link
             href={`/customers/${customer.id}/transactions`}
             className="text-xs font-medium text-muted-foreground transition-colors hover:text-foreground"
-        >
-          مشاهده همه
-        </Link>
+          >
+            مشاهده همه
+          </Link>
         </div>
 
         {transactions.length === 0 ? (

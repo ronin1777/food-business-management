@@ -21,6 +21,7 @@ import {
 } from "@/lib/api/orders";
 
 import { CancelOrderDialog } from "@/components/orders/CancelOrderDialog";
+
 import { RecordPaymentDialog } from "@/components/orders/RecordPaymentDialog";
 
 import type {
@@ -28,6 +29,7 @@ import type {
   OrderPaymentStatus,
   OrderStatus,
 } from "@/types/orders";
+import OrderInvoiceDialog from "@/components/orders/OrderInvoiceDialog";
 
 function formatNumber(value: number) {
   return new Intl.NumberFormat("fa-IR", {
@@ -40,63 +42,51 @@ function formatMoney(value: number) {
 }
 
 function formatDate(value: string) {
-  return new Intl.DateTimeFormat(
-    "fa-IR",
-    {
-      year: "numeric",
-      month: "long",
-      day: "numeric",
-      hour: "2-digit",
-      minute: "2-digit",
-    },
-  ).format(new Date(value));
+  return new Intl.DateTimeFormat("fa-IR", {
+    year: "numeric",
+    month: "long",
+    day: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  }).format(new Date(value));
 }
 
-function getOrderStatus(
-  status: OrderStatus,
-) {
+function getOrderStatus(status: OrderStatus) {
   if (status === "cancelled") {
     return {
       label: "لغو شده",
-      className:
-        "bg-destructive/10 text-destructive",
+      className: "bg-destructive/10 text-destructive",
       icon: XCircle,
     };
   }
 
   return {
     label: "ثبت شده",
-    className:
-      "bg-success/10 text-success",
+    className: "bg-success/10 text-success",
     icon: CheckCircle2,
   };
 }
 
-function getPaymentStatus(
-  status: OrderPaymentStatus,
-) {
+function getPaymentStatus(status: OrderPaymentStatus) {
   switch (status) {
     case "paid":
       return {
         label: "پرداخت شده",
-        className:
-          "bg-success/10 text-success",
+        className: "bg-success/10 text-success",
         icon: CheckCircle2,
       };
 
     case "partially_paid":
       return {
         label: "نیمه پرداخت",
-        className:
-          "bg-warning/10 text-warning",
+        className: "bg-warning/10 text-warning",
         icon: Clock3,
       };
 
     default:
       return {
         label: "پرداخت نشده",
-        className:
-          "bg-muted text-muted-foreground",
+        className: "bg-muted text-muted-foreground",
         icon: CreditCard,
       };
   }
@@ -136,9 +126,7 @@ export default function OrderDetailPage() {
   const orderId = Number(params.id);
 
   const [order, setOrder] =
-    useState<OrderDetail | null>(
-      null,
-    );
+    useState<OrderDetail | null>(null);
 
   const [loading, setLoading] =
     useState(true);
@@ -158,6 +146,9 @@ export default function OrderDetailPage() {
   const [paymentDialogOpen, setPaymentDialogOpen] =
     useState(false);
 
+  const [invoiceDialogOpen, setInvoiceDialogOpen] =
+    useState(false);
+
   useEffect(() => {
     let cancelled = false;
 
@@ -166,9 +157,7 @@ export default function OrderDetailPage() {
         !Number.isInteger(orderId) ||
         orderId <= 0
       ) {
-        setError(
-          "شناسه سفارش نامعتبر است.",
-        );
+        setError("شناسه سفارش نامعتبر است.");
         setLoading(false);
         return;
       }
@@ -279,6 +268,14 @@ export default function OrderDetailPage() {
 
   function closePaymentDialog() {
     setPaymentDialogOpen(false);
+  }
+
+  function openInvoiceDialog() {
+    setInvoiceDialogOpen(true);
+  }
+
+  function closeInvoiceDialog() {
+    setInvoiceDialogOpen(false);
   }
 
   async function handlePaymentSuccess() {
@@ -413,12 +410,37 @@ export default function OrderDetailPage() {
 
           {/* Actions */}
           <div className="flex flex-wrap items-center gap-2">
+            {/* Invoice */}
+            <button
+              type="button"
+              onClick={openInvoiceDialog}
+              className="
+                inline-flex h-10
+                items-center
+                justify-center gap-2
+                rounded-lg
+                border border-border
+                bg-card
+                px-3.5
+                text-sm font-medium
+                shadow-sm
+                transition-colors
+                hover:bg-accent
+                focus-visible:outline-none
+                focus-visible:ring-2
+                focus-visible:ring-ring
+                focus-visible:ring-offset-2
+              "
+            >
+              <FileText className="size-4" />
+              فاکتور
+            </button>
+
+            {/* Payment */}
             {canRecordPayment && (
               <button
                 type="button"
-                onClick={
-                  openPaymentDialog
-                }
+                onClick={openPaymentDialog}
                 className="
                   inline-flex h-10
                   items-center
@@ -442,13 +464,11 @@ export default function OrderDetailPage() {
               </button>
             )}
 
-            {order.status ===
-              "completed" && (
+            {/* Cancel */}
+            {order.status === "completed" && (
               <button
                 type="button"
-                onClick={
-                  openCancelDialog
-                }
+                onClick={openCancelDialog}
                 className="
                   inline-flex h-10
                   items-center
@@ -510,167 +530,147 @@ export default function OrderDetailPage() {
               </div>
             ) : (
               <div className="divide-y divide-border/70">
-                {order.items.map(
-                  (item) => (
-                    <div
-                      key={item.id}
-                      className="p-5"
-                    >
-                      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-                        <div className="flex min-w-0 gap-3">
-                          <div className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-muted">
-                            <Package className="size-4 text-muted-foreground" />
-                          </div>
-
-                          <div className="min-w-0">
-                            <p className="truncate text-sm font-semibold">
-                              {
-                                item.product_name
-                              }
-                            </p>
-
-                            <p className="mt-1 text-xs text-muted-foreground">
-                              نسخه Recipe:{" "}
-                              {item.recipe_version ??
-                                "—"}
-                            </p>
-                          </div>
+                {order.items.map((item) => (
+                  <div
+                    key={item.id}
+                    className="p-5"
+                  >
+                    <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+                      <div className="flex min-w-0 gap-3">
+                        <div className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-muted">
+                          <Package className="size-4 text-muted-foreground" />
                         </div>
 
-                        <div className="flex shrink-0 items-center gap-6">
-                          <div className="text-left">
-                            <p className="text-xs text-muted-foreground">
-                              تعداد
-                            </p>
+                        <div className="min-w-0">
+                          <p className="truncate text-sm font-semibold">
+                            {item.product_name}
+                          </p>
 
-                            <p className="mt-1 text-sm font-medium">
-                              {formatNumber(
-                                Number(
-                                  item.quantity,
-                                ),
-                              )}
-                            </p>
-                          </div>
-
-                          <div className="text-left">
-                            <p className="text-xs text-muted-foreground">
-                              مبلغ
-                            </p>
-
-                            <p className="mt-1 text-sm font-semibold">
-                              {formatMoney(
-                                Number(
-                                  item.total_price,
-                                ),
-                              )}
-                            </p>
-                          </div>
+                          <p className="mt-1 text-xs text-muted-foreground">
+                            نسخه Recipe:{" "}
+                            {item.recipe_version ?? "—"}
+                          </p>
                         </div>
                       </div>
 
-                      {/* Item Metrics */}
-                      <div className="mt-5 grid gap-3 sm:grid-cols-3">
-                        <div className="rounded-lg bg-muted/50 p-3">
+                      <div className="flex shrink-0 items-center gap-6">
+                        <div className="text-left">
                           <p className="text-xs text-muted-foreground">
-                            قیمت واحد
-                          </p>
-
-                          <p className="mt-1 text-sm font-medium">
-                            {formatMoney(
-                              Number(
-                                item.unit_price,
-                              ),
-                            )}
-                          </p>
-                        </div>
-
-                        <div className="rounded-lg bg-muted/50 p-3">
-                          <p className="text-xs text-muted-foreground">
-                            هزینه مواد
-                          </p>
-
-                          <p className="mt-1 text-sm font-medium">
-                            {formatMoney(
-                              Number(
-                                item.material_cost,
-                              ),
-                            )}
-                          </p>
-                        </div>
-
-                        <div className="rounded-lg bg-muted/50 p-3">
-                          <p className="text-xs text-muted-foreground">
-                            تعداد مواد
+                            تعداد
                           </p>
 
                           <p className="mt-1 text-sm font-medium">
                             {formatNumber(
-                              item
-                                .ingredient_usages
-                                .length,
+                              Number(item.quantity),
+                            )}
+                          </p>
+                        </div>
+
+                        <div className="text-left">
+                          <p className="text-xs text-muted-foreground">
+                            مبلغ
+                          </p>
+
+                          <p className="mt-1 text-sm font-semibold">
+                            {formatMoney(
+                              Number(item.total_price),
                             )}
                           </p>
                         </div>
                       </div>
+                    </div>
 
-                      {/* Ingredient Usages */}
-                      {item.ingredient_usages
-                        .length > 0 && (
-                        <div className="mt-5 border-t border-border/70 pt-4">
-                          <p className="mb-3 text-xs font-medium text-muted-foreground">
-                            مصرف مواد اولیه
-                          </p>
+                    {/* Item Metrics */}
+                    <div className="mt-5 grid gap-3 sm:grid-cols-3">
+                      <div className="rounded-lg bg-muted/50 p-3">
+                        <p className="text-xs text-muted-foreground">
+                          قیمت واحد
+                        </p>
 
-                          <div className="space-y-2">
-                            {item.ingredient_usages.map(
-                              (usage) => (
-                                <div
-                                  key={
-                                    usage.id
-                                  }
-                                  className="
-                                    flex items-center
-                                    justify-between
-                                    gap-4
-                                    rounded-lg
-                                    px-3 py-2.5
-                                    transition-colors
-                                    hover:bg-muted/30
-                                  "
-                                >
-                                  <div className="min-w-0">
-                                    <p className="truncate text-sm">
-                                      {
-                                        usage.ingredient_name
-                                      }
-                                    </p>
+                        <p className="mt-1 text-sm font-medium">
+                          {formatMoney(
+                            Number(item.unit_price),
+                          )}
+                        </p>
+                      </div>
 
-                                    <p className="mt-0.5 text-xs text-muted-foreground">
-                                      مصرف:{" "}
-                                      {formatNumber(
-                                        Number(
-                                          usage.quantity,
-                                        ),
-                                      )}
-                                    </p>
-                                  </div>
+                      <div className="rounded-lg bg-muted/50 p-3">
+                        <p className="text-xs text-muted-foreground">
+                          هزینه مواد
+                        </p>
 
-                                  <p className="shrink-0 text-xs font-medium">
-                                    {formatMoney(
+                        <p className="mt-1 text-sm font-medium">
+                          {formatMoney(
+                            Number(item.material_cost),
+                          )}
+                        </p>
+                      </div>
+
+                      <div className="rounded-lg bg-muted/50 p-3">
+                        <p className="text-xs text-muted-foreground">
+                          تعداد مواد
+                        </p>
+
+                        <p className="mt-1 text-sm font-medium">
+                          {formatNumber(
+                            item.ingredient_usages.length,
+                          )}
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* Ingredient Usages */}
+                    {item.ingredient_usages.length > 0 && (
+                      <div className="mt-5 border-t border-border/70 pt-4">
+                        <p className="mb-3 text-xs font-medium text-muted-foreground">
+                          مصرف مواد اولیه
+                        </p>
+
+                        <div className="space-y-2">
+                          {item.ingredient_usages.map(
+                            (usage) => (
+                              <div
+                                key={usage.id}
+                                className="
+                                  flex items-center
+                                  justify-between
+                                  gap-4
+                                  rounded-lg
+                                  px-3 py-2.5
+                                  transition-colors
+                                  hover:bg-muted/30
+                                "
+                              >
+                                <div className="min-w-0">
+                                  <p className="truncate text-sm">
+                                    {usage.ingredient_name}
+                                  </p>
+
+                                  <p className="mt-0.5 text-xs text-muted-foreground">
+                                    مصرف:{" "}
+                                    {formatNumber(
                                       Number(
-                                        usage.total_cost,
+                                        usage.quantity,
                                       ),
                                     )}
                                   </p>
                                 </div>
-                              ),
-                            )}
-                          </div>
+
+                                <p className="shrink-0 text-xs font-medium">
+                                  {formatMoney(
+                                    Number(
+                                      usage.total_cost,
+                                    ),
+                                  )}
+                                </p>
+                              </div>
+                            ),
+                          )}
                         </div>
-                      )}
-                    </div>
-                  ),
-                )}
+                      </div>
+                    )}
+                  </div>
+                ))}
               </div>
             )}
           </section>
@@ -694,9 +694,7 @@ export default function OrderDetailPage() {
                       orderStatus.className
                     }
                     icon={orderStatus.icon}
-                    label={
-                      orderStatus.label
-                    }
+                    label={orderStatus.label}
                   />
                 </div>
 
@@ -709,12 +707,8 @@ export default function OrderDetailPage() {
                     className={
                       paymentStatus.className
                     }
-                    icon={
-                      paymentStatus.icon
-                    }
-                    label={
-                      paymentStatus.label
-                    }
+                    icon={paymentStatus.icon}
+                    label={paymentStatus.label}
                   />
                 </div>
 
@@ -821,9 +815,7 @@ export default function OrderDetailPage() {
               {canRecordPayment && (
                 <button
                   type="button"
-                  onClick={
-                    openPaymentDialog
-                  }
+                  onClick={openPaymentDialog}
                   className="
                     mt-4 inline-flex w-full
                     h-10
@@ -969,6 +961,13 @@ export default function OrderDetailPage() {
           </div>
         </section>
       </div>
+
+      {/* Invoice Dialog */}
+      <OrderInvoiceDialog
+        open={invoiceDialogOpen}
+        order={order}
+        onClose={closeInvoiceDialog}
+      />
 
       {/* Cancel Dialog */}
       <CancelOrderDialog

@@ -2,6 +2,11 @@
 
 import { useState } from "react";
 
+import CustomerReport from "./customers/CustomerReport";
+import InventoryReport from "./inventory/InventoryReport";
+import PurchaseReport from "./purchases/PurchaseReport";
+import ProfitabilityReport from "./profitability/ProfitabilityReport";
+import SupplierReport from "./suppliers/SupplierReport";
 import ReportsHeader from "./ReportsHeader";
 import ReportsTabs, {
   type ReportTab,
@@ -24,19 +29,44 @@ export default function ReportsPage() {
 
         {activeTab === "sales" && <SalesReport />}
 
-        {activeTab !== "sales" && (
-          <div className="flex min-h-[420px] items-center justify-center rounded-xl border border-border bg-card">
-            <div className="text-center">
-              <p className="text-sm font-medium">
-                این گزارش در مرحله بعد پیاده‌سازی می‌شود.
-              </p>
-
-              <p className="mt-1 text-sm text-muted-foreground">
-                ساختار مشترک Reports آماده است.
-              </p>
-            </div>
-          </div>
+        {activeTab === "purchases" && (
+          <PurchaseReport />
         )}
+
+        {activeTab === "profitability" && (
+          <ProfitabilityReport />
+        )}
+
+        {activeTab === "inventory" && (
+          <InventoryReport />
+        )}
+
+        {activeTab === "customers" && (
+          <CustomerReport />
+        )}
+
+        {activeTab === "suppliers" && (
+          <SupplierReport />
+        )}
+
+        {activeTab !== "sales" &&
+          activeTab !== "purchases" &&
+          activeTab !== "profitability" &&
+          activeTab !== "inventory" &&
+          activeTab !== "customers" &&
+          activeTab !== "suppliers" && (
+            <div className="flex min-h-[420px] items-center justify-center rounded-xl border border-border bg-card">
+              <div className="text-center">
+                <p className="text-sm font-medium">
+                  این گزارش در مرحله بعد پیاده‌سازی می‌شود.
+                </p>
+
+                <p className="mt-1 text-sm text-muted-foreground">
+                  ساختار مشترک Reports آماده است.
+                </p>
+              </div>
+            </div>
+          )}
       </div>
     </div>
   );

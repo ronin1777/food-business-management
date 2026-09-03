@@ -583,3 +583,475 @@ button {
     @apply font-sans;
   }
 }
+
+
+
+
+
+
+
+
+
+
+
+
+/* ================================
+   Order Invoice / Thermal Receipt
+   ================================ */
+
+.invoice-receipt {
+  width: 80mm;
+  max-width: 80mm;
+  margin: 0 auto;
+  padding: 6mm 4.5mm 7mm;
+  box-sizing: border-box;
+
+  background: #ffffff;
+  color: #111111;
+
+  font-family: Tahoma, Arial, sans-serif;
+  font-size: 11px;
+  line-height: 1.6;
+
+  direction: rtl;
+}
+
+/* Header */
+
+.invoice-header {
+  text-align: center;
+}
+
+.invoice-brand-mark {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  width: 30px;
+  height: 30px;
+
+  margin: 0 auto 2.5mm;
+
+  border: 1px solid #d4d4d4;
+  border-radius: 7px;
+}
+
+.invoice-brand-icon {
+  width: 15px;
+  height: 15px;
+  stroke-width: 1.8;
+}
+
+.invoice-title {
+  margin: 0;
+
+  font-size: 17px;
+  font-weight: 800;
+}
+
+.invoice-order-number {
+  margin-top: 1mm;
+
+  color: #404040;
+
+  font-size: 9px;
+  font-weight: 700;
+}
+
+.invoice-date {
+  margin-top: 0.5mm;
+
+  color: #737373;
+
+  font-size: 8px;
+}
+
+/* Separators */
+
+.invoice-separator {
+  width: 100%;
+  margin: 3.5mm 0;
+  overflow: hidden;
+}
+
+.invoice-separator span {
+  display: block;
+  width: 100%;
+
+  border-top: 1px dashed #a3a3a3;
+}
+
+/* Customer */
+
+.invoice-customer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+
+  gap: 4mm;
+}
+
+.invoice-customer span {
+  color: #737373;
+  font-size: 8.5px;
+}
+
+.invoice-customer strong {
+  max-width: 50mm;
+
+  overflow-wrap: anywhere;
+
+  font-size: 9.5px;
+  font-weight: 700;
+}
+
+/* Items */
+
+.invoice-items-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+
+  margin-bottom: 1.5mm;
+
+  color: #737373;
+
+  font-size: 8px;
+  font-weight: 700;
+}
+
+.invoice-items {
+  display: flex;
+  flex-direction: column;
+}
+
+.invoice-item {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+
+  gap: 4mm;
+
+  padding: 2.5mm 0;
+
+  border-bottom: 1px solid #eeeeee;
+}
+
+.invoice-item:last-child {
+  border-bottom: none;
+}
+
+.invoice-item-info {
+  min-width: 0;
+  flex: 1;
+}
+
+.invoice-item-name {
+  overflow-wrap: anywhere;
+
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 1.45;
+}
+
+.invoice-item-meta {
+  margin-top: 0.5mm;
+
+  color: #737373;
+
+  font-size: 7.5px;
+}
+
+.invoice-item-total {
+  flex-shrink: 0;
+
+  max-width: 31mm;
+
+  text-align: left;
+
+  font-size: 9.5px;
+  font-weight: 700;
+  line-height: 1.5;
+}
+
+/* Financial */
+
+.invoice-financial {
+  display: flex;
+  flex-direction: column;
+
+  gap: 2mm;
+}
+
+.invoice-financial-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+
+  gap: 4mm;
+
+  font-size: 9px;
+}
+
+.invoice-financial-row span {
+  color: #525252;
+}
+
+.invoice-financial-row strong {
+  font-size: 10px;
+  font-weight: 700;
+}
+
+/* Remaining */
+
+.invoice-remaining {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+
+  gap: 4mm;
+
+  margin-top: 1mm;
+  padding: 3mm;
+
+  border: 1px solid #f1d79d;
+  border-radius: 7px;
+
+  background: #fffaf0;
+}
+
+.invoice-remaining > div {
+  display: flex;
+  flex-direction: column;
+
+  gap: 0.3mm;
+}
+
+.invoice-remaining span {
+  color: #a16207;
+
+  font-size: 9.5px;
+  font-weight: 800;
+}
+
+.invoice-remaining small {
+  color: #a16207;
+
+  font-size: 7.5px;
+  opacity: 0.8;
+}
+
+.invoice-remaining strong {
+  flex-shrink: 0;
+
+  color: #a16207;
+
+  font-size: 11px;
+  font-weight: 800;
+}
+
+/* Paid */
+
+.invoice-paid {
+  display: flex;
+  align-items: center;
+
+  gap: 2mm;
+
+  margin-top: 1mm;
+  padding: 3mm;
+
+  border: 1px solid #c9e6d1;
+  border-radius: 7px;
+
+  background: #f4fbf6;
+
+  color: #15803d;
+}
+
+.invoice-paid > svg {
+  width: 13px;
+  height: 13px;
+
+  flex-shrink: 0;
+}
+
+.invoice-paid > div {
+  display: flex;
+  flex-direction: column;
+
+  gap: 0.3mm;
+}
+
+.invoice-paid span {
+  font-size: 9.5px;
+  font-weight: 800;
+}
+
+.invoice-paid small {
+  font-size: 7.5px;
+  opacity: 0.8;
+}
+
+/* Footer */
+
+.invoice-footer {
+  margin-top: 5mm;
+
+  text-align: center;
+}
+
+.invoice-footer-line {
+  width: 35%;
+
+  margin: 0 auto 2.5mm;
+
+  border-top: 1px solid #d4d4d4;
+}
+
+.invoice-thank-you {
+  margin: 0;
+
+  font-size: 8.5px;
+  font-weight: 700;
+}
+
+.invoice-footer-symbol {
+  margin-top: 1.5mm;
+
+  color: #737373;
+
+  font-size: 9px;
+}
+
+/* ================================
+   Thermal Printer
+   ================================ */
+
+@media print {
+  @page {
+    size: 80mm auto;
+    margin: 0;
+  }
+
+  html,
+  body {
+    width: 80mm !important;
+    min-width: 80mm !important;
+
+    margin: 0 !important;
+    padding: 0 !important;
+
+    background: #ffffff !important;
+  }
+
+  body * {
+    visibility: hidden !important;
+  }
+
+  #order-invoice,
+  #order-invoice * {
+    visibility: visible !important;
+  }
+
+  .invoice-dialog-overlay {
+    position: static !important;
+
+    display: block !important;
+
+    width: 80mm !important;
+    height: auto !important;
+    min-height: 0 !important;
+
+    margin: 0 !important;
+    padding: 0 !important;
+
+    overflow: visible !important;
+
+    background: transparent !important;
+    backdrop-filter: none !important;
+  }
+
+  .invoice-dialog-overlay > div {
+    display: block !important;
+
+    width: 80mm !important;
+    max-width: 80mm !important;
+
+    height: auto !important;
+    max-height: none !important;
+
+    margin: 0 !important;
+    padding: 0 !important;
+
+    overflow: visible !important;
+
+    border: 0 !important;
+    border-radius: 0 !important;
+
+    background: transparent !important;
+
+    box-shadow: none !important;
+  }
+
+  .invoice-dialog-overlay
+    > div
+    > .invoice-preview-area {
+    display: block !important;
+
+    width: 80mm !important;
+    height: auto !important;
+    max-height: none !important;
+    min-height: 0 !important;
+
+    margin: 0 !important;
+    padding: 0 !important;
+
+    overflow: visible !important;
+
+    background: transparent !important;
+  }
+
+  .invoice-dialog-overlay
+    > div
+    > div:first-child,
+  .invoice-dialog-overlay
+    > div
+    > div:last-child {
+    display: none !important;
+  }
+
+  #order-invoice {
+    position: static !important;
+
+    width: 80mm !important;
+    max-width: 80mm !important;
+
+    min-height: 0 !important;
+
+    margin: 0 !important;
+    padding: 4mm 4mm 6mm !important;
+
+    background: #ffffff !important;
+
+    box-shadow: none !important;
+
+    color: #000000 !important;
+  }
+}
+
+
+.invoice-business-name {
+  margin: 0 0 1mm;
+
+  font-size: 13px;
+  font-weight: 800;
+  line-height: 1.4;
+}
+
+.invoice-title {
+  margin: 0;
+
+  font-size: 16px;
+  font-weight: 700;
+}

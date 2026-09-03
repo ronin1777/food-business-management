@@ -78,6 +78,10 @@ export default function CustomerTransactionsPage({
 
   const customerId = Number(id);
 
+  const isValidCustomerId =
+    Number.isInteger(customerId) &&
+    customerId > 0;
+
   const [customer, setCustomer] =
     useState<CustomerDetail | null>(null);
 
@@ -111,14 +115,7 @@ export default function CustomerTransactionsPage({
     useState<string | null>(null);
 
   useEffect(() => {
-    if (
-      !Number.isInteger(customerId) ||
-      customerId <= 0
-    ) {
-      setError(
-        "شناسه مشتری معتبر نیست.",
-      );
-      setLoading(false);
+    if (!isValidCustomerId) {
       return;
     }
 
@@ -150,13 +147,13 @@ export default function CustomerTransactionsPage({
     return () => {
       cancelled = true;
     };
-  }, [customerId]);
+  }, [
+    customerId,
+    isValidCustomerId,
+  ]);
 
   useEffect(() => {
-    if (
-      !Number.isInteger(customerId) ||
-      customerId <= 0
-    ) {
+    if (!isValidCustomerId) {
       return;
     }
 
@@ -229,6 +226,7 @@ export default function CustomerTransactionsPage({
     };
   }, [
     customerId,
+    isValidCustomerId,
     page,
     search,
     direction,
@@ -274,6 +272,34 @@ export default function CustomerTransactionsPage({
     setPage((current) => current + 1);
   }
 
+  if (!isValidCustomerId) {
+    return (
+      <div className="flex min-h-[500px] items-center justify-center">
+        <div className="w-full max-w-md rounded-xl border border-destructive/20 bg-card p-6 text-center shadow-sm">
+          <div className="mx-auto flex size-12 items-center justify-center rounded-full bg-destructive/10">
+            <ReceiptText className="size-5 text-destructive" />
+          </div>
+
+          <h1 className="mt-4 text-lg font-semibold">
+            شناسه مشتری معتبر نیست
+          </h1>
+
+          <p className="mt-2 text-sm text-muted-foreground">
+            شناسه مشتری واردشده معتبر نیست.
+          </p>
+
+          <Link
+            href="/customers"
+            className="mt-5 inline-flex items-center gap-1.5 rounded-lg border border-border px-4 py-2 text-sm font-medium transition-colors hover:bg-accent"
+          >
+            <ArrowRight className="size-4" />
+            بازگشت به مشتریان
+          </Link>
+        </div>
+      </div>
+    );
+  }
+
   if (!customer && loading) {
     return (
       <div className="space-y-6">
@@ -299,8 +325,7 @@ export default function CustomerTransactionsPage({
           className="inline-flex items-center gap-1.5 text-sm text-muted-foreground transition-colors hover:text-foreground"
         >
           <ArrowRight className="size-4" />
-          {customer?.name ??
-            "مشتری"}
+          {customer?.name ?? "مشتری"}
         </Link>
 
         <div className="mt-4 flex items-center gap-3">
@@ -342,9 +367,7 @@ export default function CustomerTransactionsPage({
             <input
               value={search}
               onChange={(event) => {
-                setSearch(
-                  event.target.value,
-                );
+                setSearch(event.target.value);
                 setPage(1);
               }}
               placeholder="جستجو در توضیحات..."
@@ -368,9 +391,7 @@ export default function CustomerTransactionsPage({
           <select
             value={direction}
             onChange={(event) => {
-              setDirection(
-                event.target.value,
-              );
+              setDirection(event.target.value);
               setPage(1);
             }}
             className="
@@ -501,9 +522,7 @@ export default function CustomerTransactionsPage({
                   {transactions.map(
                     (transaction) => (
                       <tr
-                        key={
-                          transaction.id
-                        }
+                        key={transaction.id}
                         className="border-b border-border/70 last:border-b-0 transition-colors hover:bg-muted/20"
                       >
                         <td className="px-5 py-4">
@@ -531,9 +550,7 @@ export default function CustomerTransactionsPage({
                               getDirectionClass(
                                 transaction.direction,
                               ),
-                            ].join(
-                              " ",
-                            )}
+                            ].join(" ")}
                           >
                             {
                               transaction.direction_display
@@ -587,9 +604,7 @@ export default function CustomerTransactionsPage({
               <p className="text-xs text-muted-foreground">
                 مجموع{" "}
                 <span className="font-medium text-foreground">
-                  {formatNumber(
-                    totalCount,
-                  )}
+                  {formatNumber(totalCount)}
                 </span>{" "}
                 تراکنش
               </p>
@@ -598,9 +613,7 @@ export default function CustomerTransactionsPage({
                 <button
                   type="button"
                   disabled={!hasPrevious}
-                  onClick={
-                    goToPrevious
-                  }
+                  onClick={goToPrevious}
                   className="
                     rounded-lg
                     border border-border
@@ -618,15 +631,11 @@ export default function CustomerTransactionsPage({
                 <span className="min-w-24 text-center text-xs text-muted-foreground">
                   صفحه{" "}
                   <span className="font-medium text-foreground">
-                    {formatNumber(
-                      page,
-                    )}
+                    {formatNumber(page)}
                   </span>{" "}
                   از{" "}
                   <span className="font-medium text-foreground">
-                    {formatNumber(
-                      pageCount,
-                    )}
+                    {formatNumber(pageCount)}
                   </span>
                 </span>
 

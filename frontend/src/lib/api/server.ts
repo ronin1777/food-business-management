@@ -85,6 +85,27 @@ export async function serverApi<T>(
     )
     .join("; ");
 
+  const headers = new Headers(
+    options.headers,
+  );
+
+  if (
+    !(options.body instanceof FormData) &&
+    !headers.has("Content-Type")
+  ) {
+    headers.set(
+      "Content-Type",
+      "application/json",
+    );
+  }
+
+  if (cookieHeader) {
+    headers.set(
+      "Cookie",
+      cookieHeader,
+    );
+  }
+
   let response: Response;
 
   try {
@@ -92,22 +113,7 @@ export async function serverApi<T>(
       `${API_URL}${endpoint}`,
       {
         ...options,
-        headers: {
-          ...(options.body instanceof FormData
-            ? {}
-            : {
-                "Content-Type":
-                  "application/json",
-              }),
-
-          ...(cookieHeader
-            ? {
-                Cookie: cookieHeader,
-              }
-            : {}),
-
-          ...options.headers,
-        },
+        headers,
         cache: "no-store",
       },
     );
@@ -126,8 +132,12 @@ export async function serverApi<T>(
   }
 
   if (!response.ok) {
-    const { message, errors } =
-      await parseErrorResponse(response);
+    const {
+      message,
+      errors,
+    } = await parseErrorResponse(
+      response,
+    );
 
     throw new ServerApiError(
       message,

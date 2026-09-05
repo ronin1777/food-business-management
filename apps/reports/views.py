@@ -1,16 +1,12 @@
-from rest_framework import status, viewsets
+from datetime import date
+from typing import TypedDict, cast
+
+from rest_framework import viewsets
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.request import Request
 from rest_framework.response import Response
 
 from apps.core.responses import APIResponse
-from .services.profitability import (
-    ProfitabilityReportService,
-)
-
-from .services.inventory import (
-    InventoryReportService,
-)
 
 from .serializers import (
     CustomerReportSerializer,
@@ -21,66 +17,20 @@ from .serializers import (
     SalesReportSerializer,
     SupplierReportSerializer,
 )
-
-from .services.suppliers import (
-    SupplierReportService,
-)
-
-from .services.customers import (
-    CustomerReportService,
-)
+from .services.customers import CustomerReportService
+from .services.inventory import InventoryReportService
+from .services.profitability import ProfitabilityReportService
+from .services.purchases import PurchaseReportService
 from .services.sales import SalesReportService
+from .services.suppliers import SupplierReportService
 
 
-class SalesReportViewSet(
-    viewsets.GenericViewSet,
-):
-    permission_classes = [IsAuthenticated]
-
-    def list(
-        self,
-        request: Request,
-        *args,
-        **kwargs,
-    ) -> Response:
-        serializer_data = {
-            "date_from": request.query_params.get(
-                "date_from"
-            ),
-            "date_to": request.query_params.get(
-                "date_to"
-            ),
-        }
-
-        period_serializer = ReportPeriodSerializer(
-            data=serializer_data,
-        )
-
-        period_serializer.is_valid(
-            raise_exception=True,
-        )
-
-        data = SalesReportService.get_report(
-            organization_id=(
-                request.user.organization.id
-            ),
-            **period_serializer.validated_data,
-        )
-
-        serializer = SalesReportSerializer(
-            data,
-        )
-
-        return APIResponse.success(
-            data=serializer.data,
-        )
+class ReportPeriodData(TypedDict):
+    date_from: date
+    date_to: date
 
 
-
-
-class PurchaseReportViewSet(
-    viewsets.GenericViewSet,
-):
+class SalesReportViewSet(viewsets.GenericViewSet):
     permission_classes = [IsAuthenticated]
 
     def list(
@@ -104,11 +54,59 @@ class PurchaseReportViewSet(
             raise_exception=True,
         )
 
+        period = cast(
+            ReportPeriodData,
+            period_serializer.validated_data,
+        )
+
+        report = SalesReportService.get_report(
+            organization_id=request.user.organization.id,
+            date_from=period["date_from"],
+            date_to=period["date_to"],
+        )
+
+        serializer = SalesReportSerializer(
+            report,
+        )
+
+        return APIResponse.success(
+            data=serializer.data,
+        )
+
+
+class PurchaseReportViewSet(viewsets.GenericViewSet):
+    permission_classes = [IsAuthenticated]
+
+    def list(
+        self,
+        request: Request,
+        *args,
+        **kwargs,
+    ) -> Response:
+        period_serializer = ReportPeriodSerializer(
+            data={
+                "date_from": request.query_params.get(
+                    "date_from",
+                ),
+                "date_to": request.query_params.get(
+                    "date_to",
+                ),
+            },
+        )
+
+        period_serializer.is_valid(
+            raise_exception=True,
+        )
+
+        period = cast(
+            ReportPeriodData,
+            period_serializer.validated_data,
+        )
+
         report = PurchaseReportService.get_report(
-            organization_id=(
-                request.user.organization.id
-            ),
-            **period_serializer.validated_data,
+            organization_id=request.user.organization.id,
+            date_from=period["date_from"],
+            date_to=period["date_to"],
         )
 
         serializer = PurchaseReportSerializer(
@@ -118,7 +116,6 @@ class PurchaseReportViewSet(
         return APIResponse.success(
             data=serializer.data,
         )
-
 
 
 class ProfitabilityReportViewSet(
@@ -147,11 +144,15 @@ class ProfitabilityReportViewSet(
             raise_exception=True,
         )
 
+        period = cast(
+            ReportPeriodData,
+            period_serializer.validated_data,
+        )
+
         report = ProfitabilityReportService.get_report(
-            organization_id=(
-                request.user.organization.id
-            ),
-            **period_serializer.validated_data,
+            organization_id=request.user.organization.id,
+            date_from=period["date_from"],
+            date_to=period["date_to"],
         )
 
         serializer = ProfitabilityReportSerializer(
@@ -161,8 +162,6 @@ class ProfitabilityReportViewSet(
         return APIResponse.success(
             data=serializer.data,
         )
-
-
 
 
 class InventoryReportViewSet(
@@ -177,9 +176,7 @@ class InventoryReportViewSet(
         **kwargs,
     ) -> Response:
         report = InventoryReportService.get_report(
-            organization_id=(
-                request.user.organization.id
-            ),
+            organization_id=request.user.organization.id,
         )
 
         serializer = InventoryReportSerializer(
@@ -189,7 +186,6 @@ class InventoryReportViewSet(
         return APIResponse.success(
             data=serializer.data,
         )
-
 
 
 class CustomerReportViewSet(
@@ -204,9 +200,7 @@ class CustomerReportViewSet(
         **kwargs,
     ) -> Response:
         report = CustomerReportService.get_report(
-            organization_id=(
-                request.user.organization.id
-            ),
+            organization_id=request.user.organization.id,
         )
 
         serializer = CustomerReportSerializer(
@@ -216,7 +210,6 @@ class CustomerReportViewSet(
         return APIResponse.success(
             data=serializer.data,
         )
-
 
 
 class SupplierReportViewSet(
@@ -231,9 +224,7 @@ class SupplierReportViewSet(
         **kwargs,
     ) -> Response:
         report = SupplierReportService.get_report(
-            organization_id=(
-                request.user.organization.id
-            ),
+            organization_id=request.user.organization.id,
         )
 
         serializer = SupplierReportSerializer(

@@ -8,60 +8,81 @@ import {
   X,
 } from "lucide-react";
 
+import {
+  usePathname,
+  useRouter,
+  useSearchParams,
+} from "next/navigation";
+
 import type {
-  OrderFilters,
   OrderPaymentStatus,
   OrderStatus,
 } from "@/types/orders";
 
-type OrdersFiltersProps = {
-  filters: OrderFilters;
-  onChange: (
-    filters: OrderFilters,
-  ) => void;
-};
-
-export function OrdersFilters({
-  filters,
-  onChange,
-}: OrdersFiltersProps) {
-  const hasFilters =
-    Boolean(filters.search) ||
-    Boolean(filters.status) ||
-    Boolean(filters.paymentStatus);
+export function OrdersFilters() {
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
 
   function updateFilter(
-    key: keyof OrderFilters,
-    value:
-      | string
-      | OrderStatus
-      | OrderPaymentStatus
-      | undefined,
+    key: string,
+    value: string,
   ) {
-    onChange({
-      ...filters,
-      page: 1,
-      [key]: value || undefined,
-    });
+    const params = new URLSearchParams(
+      searchParams.toString(),
+    );
+
+    if (value) {
+      params.set(key, value);
+    } else {
+      params.delete(key);
+    }
+
+    params.delete("page");
+
+    const query = params.toString();
+
+    router.push(
+      `${pathname}${query ? `?${query}` : ""}`,
+    );
   }
 
   function resetFilters() {
-    onChange({
-      page: 1,
-      pageSize: 20,
-      ordering: "-ordered_at",
-    });
+    const ordering =
+      searchParams.get("ordering");
+
+    const params = new URLSearchParams();
+
+    if (ordering) {
+      params.set("ordering", ordering);
+    }
+
+    router.push(
+      `${pathname}?${params.toString()}`,
+    );
   }
+
+  const hasFilters =
+    Boolean(searchParams.get("search")) ||
+    Boolean(searchParams.get("status")) ||
+    Boolean(
+      searchParams.get("paymentStatus"),
+    );
+
+  const ordering =
+    searchParams.get("ordering") ||
+    "-ordered_at";
 
   return (
     <div className="border-b border-border px-5 py-4">
       <div className="flex flex-col gap-3 xl:flex-row xl:items-center">
-        {/* Search */}
         <div className="relative min-w-0 flex-1">
           <Search className="pointer-events-none absolute right-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
 
           <input
-            value={filters.search ?? ""}
+            defaultValue={
+              searchParams.get("search") ?? ""
+            }
             onChange={(event) =>
               updateFilter(
                 "search",
@@ -85,24 +106,25 @@ export function OrdersFilters({
           />
         </div>
 
-        {/* Filter buttons wrapper - responsive flex wrap */}
         <div className="flex flex-wrap items-center gap-2">
-          {/* Status */}
           <div className="flex items-center gap-2">
             <SlidersHorizontal className="hidden size-4 text-muted-foreground sm:block" />
 
             <select
-              value={filters.status ?? ""}
+              defaultValue={
+                searchParams.get("status") ?? ""
+              }
               onChange={(event) =>
                 updateFilter(
                   "status",
                   event.target.value as
                     | OrderStatus
-                    | undefined,
+                    | "",
                 )
               }
               className="
                 h-10 min-w-[100px] sm:min-w-[130px]
+                max-w-[140px] sm:max-w-none
                 rounded-lg
                 border border-input
                 bg-background
@@ -112,7 +134,6 @@ export function OrdersFilters({
                 focus:border-ring
                 focus:ring-2
                 focus:ring-ring/20
-                max-w-[140px] sm:max-w-none
               "
             >
               <option value="">
@@ -129,19 +150,23 @@ export function OrdersFilters({
             </select>
           </div>
 
-          {/* Payment */}
           <select
-            value={filters.paymentStatus ?? ""}
+            defaultValue={
+              searchParams.get(
+                "paymentStatus",
+              ) ?? ""
+            }
             onChange={(event) =>
               updateFilter(
                 "paymentStatus",
                 event.target.value as
                   | OrderPaymentStatus
-                  | undefined,
+                  | "",
               )
             }
             className="
               h-10 min-w-[120px] sm:min-w-[150px]
+              max-w-[150px] sm:max-w-none
               rounded-lg
               border border-input
               bg-background
@@ -151,7 +176,6 @@ export function OrdersFilters({
               focus:border-ring
               focus:ring-2
               focus:ring-ring/20
-              max-w-[150px] sm:max-w-none
             "
           >
             <option value="">
@@ -171,20 +195,19 @@ export function OrdersFilters({
             </option>
           </select>
 
-          {/* Ordering */}
           <button
             type="button"
             onClick={() =>
               updateFilter(
                 "ordering",
-                filters.ordering ===
-                  "-ordered_at"
+                ordering === "-ordered_at"
                   ? "ordered_at"
                   : "-ordered_at",
               )
             }
             className="
               inline-flex h-10
+              flex-shrink-0
               items-center justify-center gap-2
               rounded-lg
               border border-input
@@ -194,11 +217,9 @@ export function OrdersFilters({
               text-foreground
               transition-colors
               hover:bg-accent
-              flex-shrink-0
             "
           >
-            {filters.ordering ===
-            "-ordered_at" ? (
+            {ordering === "-ordered_at" ? (
               <ArrowDownAZ className="size-4" />
             ) : (
               <ArrowUpAZ className="size-4" />
@@ -207,13 +228,13 @@ export function OrdersFilters({
             <span>تاریخ</span>
           </button>
 
-          {/* Reset */}
           {hasFilters && (
             <button
               type="button"
               onClick={resetFilters}
               className="
                 inline-flex h-10
+                flex-shrink-0
                 items-center justify-center gap-2
                 rounded-lg
                 px-3
@@ -222,7 +243,6 @@ export function OrdersFilters({
                 transition-colors
                 hover:bg-accent
                 hover:text-foreground
-                flex-shrink-0
               "
             >
               <X className="size-4" />

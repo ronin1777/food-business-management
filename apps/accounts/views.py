@@ -1,4 +1,3 @@
-
 from django.contrib.auth import get_user_model
 from django.db import transaction
 
@@ -26,15 +25,50 @@ class AuthViewSet(viewsets.GenericViewSet):
     def get_permissions(self):
         if self.action in {
             "register",
+            "mobile_register",
             "login",
+            "mobile_login",
+            "mobile_refresh",
             "refresh",
             "logout",
+            "mobile_logout",
         }:
             return [AllowAny()]
 
         return [IsAuthenticated()]
 
     def register(
+        self,
+        request: Request,
+        *args,
+        **kwargs,
+    ) -> Response:
+        serializer = RegisterSerializer(
+            data=request.data,
+        )
+
+        serializer.is_valid(
+            raise_exception=True,
+        )
+
+        with transaction.atomic():
+            user = serializer.save()
+
+        return APIResponse.success(
+            data={
+                "user": {
+                    "id": user.id,
+                    "username": user.username,
+                },
+            },
+            message=(
+                "ثبت‌نام با موفقیت انجام شد. "
+                "حساب کاربری شما پس از تأیید فعال خواهد شد."
+            ),
+            status_code=status.HTTP_201_CREATED,
+        )
+
+    def mobile_register(
         self,
         request: Request,
         *args,
@@ -130,10 +164,98 @@ class AuthViewSet(viewsets.GenericViewSet):
             secure=False,
             samesite="Lax",
             max_age=7 * 24 * 60 * 60,
-            path="/api/auth/",
+            path="/",
         )
 
         return response
+
+    def mobile_login(
+        self,
+        request: Request,
+        *args,
+        **kwargs,
+    ) -> Response:
+        serializer = LoginSerializer(
+            data=request.data,
+        )
+
+        serializer.is_valid(
+            raise_exception=True,
+        )
+
+        username = serializer.validated_data["username"]
+        password = serializer.validated_data["password"]
+
+        user = User.objects.filter(
+            username=username,
+        ).first()
+
+        # User does not exist or password is incorrect.
+        if user is None or not user.check_password(password):
+            return APIResponse.error(
+                message="نام کاربری یا رمز عبور اشتباه است.",
+                status_code=status.HTTP_401_UNAUTHORIZED,
+            )
+
+        # Password is correct, but account is inactive.
+        if not user.is_active:
+            return APIResponse.error(
+                message="حساب کاربری غیرفعال است.",
+                status_code=status.HTTP_401_UNAUTHORIZED,
+            )
+
+        refresh = RefreshToken.for_user(user)
+        access_token = str(refresh.access_token)
+
+        return APIResponse.success(
+            data={
+                "access": access_token,
+                "refresh": str(refresh),
+                "user": {
+                    "id": user.id,
+                    "username": user.username,
+                },
+            },
+            message="ورود با موفقیت انجام شد.",
+        )
+
+    def mobile_refresh(
+        self,
+        request: Request,
+        *args,
+        **kwargs,
+    ) -> Response:
+        refresh_token = request.data.get(
+            "refresh",
+        )
+
+        if not refresh_token:
+            return APIResponse.error(
+                message="Refresh Token ارسال نشده است.",
+                status_code=status.HTTP_400_BAD_REQUEST,
+            )
+
+        try:
+            refresh = RefreshToken(
+                refresh_token,
+            )
+
+            access_token = str(
+                refresh.access_token,
+            )
+
+        except TokenError:
+            return APIResponse.error(
+                message="Refresh Token نامعتبر یا منقضی شده است.",
+                status_code=status.HTTP_401_UNAUTHORIZED,
+            )
+
+        return APIResponse.success(
+            data={
+                "access": access_token,
+            },
+            message="توکن دسترسی با موفقیت تمدید شد.",
+        )
 
     def refresh(
         self,
@@ -219,6 +341,30 @@ class AuthViewSet(viewsets.GenericViewSet):
 
         return response
 
+    def mobile_logout(
+        self,
+        request: Request,
+        *args,
+        **kwargs,
+    ) -> Response:
+        refresh_token = request.data.get(
+            "refresh",
+        )
+
+        if refresh_token:
+            try:
+                refresh = RefreshToken(
+                    refresh_token,
+                )
+                refresh.blacklist()
+            except TokenError:
+                pass
+
+        return APIResponse.success(
+            data=None,
+            message="با موفقیت خارج شدید.",
+        )
+
     def me(
         self,
         request: Request,
@@ -234,4 +380,3 @@ class AuthViewSet(viewsets.GenericViewSet):
                 "user": serializer.data,
             },
         )
-

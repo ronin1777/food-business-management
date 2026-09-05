@@ -1,17 +1,11 @@
-"use client";
+import Link from "next/link";
 
 import {
   ArrowRight,
+  Beaker,
   Check,
   ChevronDown,
-  Loader2,
-  Beaker,
 } from "lucide-react";
-import Link from "next/link";
-import {
-  FormEvent,
-  useState,
-} from "react";
 
 import type { Ingredient } from "@/types/ingredients";
 
@@ -20,81 +14,23 @@ export type IngredientUnitOption = {
   label: string;
 };
 
+type IngredientAction = (
+  formData: FormData,
+) => Promise<void>;
+
 type IngredientFormProps = {
   mode: "create" | "edit";
   initialValues?: Ingredient | null;
   unitOptions: IngredientUnitOption[];
-  loading?: boolean;
-  error?: string | null;
-  onSubmit: (values: {
-    name: string;
-    unit_type: string;
-    is_active: boolean;
-  }) => Promise<void>;
+  action: IngredientAction;
 };
 
 export default function IngredientForm({
   mode,
   initialValues,
   unitOptions,
-  loading = false,
-  error = null,
-  onSubmit,
+  action,
 }: IngredientFormProps) {
-  const [name, setName] = useState(
-    initialValues?.name ?? "",
-  );
-
-  const [unitType, setUnitType] =
-    useState(
-      initialValues?.unit_type ?? "",
-    );
-
-  const [isActive, setIsActive] =
-    useState(
-      initialValues?.is_active ?? true,
-    );
-
-  const [validationError, setValidationError] =
-    useState<string | null>(null);
-
-  async function handleSubmit(
-    event: FormEvent<HTMLFormElement>,
-  ) {
-    event.preventDefault();
-
-    const trimmedName = name.trim();
-
-    if (!trimmedName) {
-      setValidationError(
-        "نام ماده اولیه الزامی است.",
-      );
-      return;
-    }
-
-    if (trimmedName.length > 150) {
-      setValidationError(
-        "نام ماده اولیه نمی‌تواند بیشتر از ۱۵۰ کاراکتر باشد.",
-      );
-      return;
-    }
-
-    if (!unitType) {
-      setValidationError(
-        "نوع واحد را انتخاب کنید.",
-      );
-      return;
-    }
-
-    setValidationError(null);
-
-    await onSubmit({
-      name: trimmedName,
-      unit_type: unitType,
-      is_active: isActive,
-    });
-  }
-
   const title =
     mode === "create"
       ? "ماده اولیه جدید"
@@ -139,7 +75,7 @@ export default function IngredientForm({
       </div>
 
       <form
-        onSubmit={handleSubmit}
+        action={action}
         className="overflow-hidden rounded-xl border border-border bg-card shadow-sm"
       >
         <div className="space-y-6 p-5 sm:p-6">
@@ -157,14 +93,14 @@ export default function IngredientForm({
 
             <input
               id="ingredient-name"
+              name="name"
               type="text"
-              value={name}
-              onChange={(event) =>
-                setName(event.target.value)
+              defaultValue={
+                initialValues?.name ?? ""
               }
               maxLength={150}
               placeholder="مثلاً دانه قهوه عربیکا"
-              disabled={loading}
+              required
               className="
                 h-11 w-full
                 rounded-lg
@@ -177,8 +113,6 @@ export default function IngredientForm({
                 focus:border-ring
                 focus:ring-2
                 focus:ring-ring/20
-                disabled:cursor-not-allowed
-                disabled:opacity-60
               "
             />
           </div>
@@ -198,13 +132,11 @@ export default function IngredientForm({
             <div className="relative">
               <select
                 id="ingredient-unit-type"
-                value={unitType}
-                onChange={(event) =>
-                  setUnitType(
-                    event.target.value,
-                  )
+                name="unit_type"
+                defaultValue={
+                  initialValues?.unit_type ?? ""
                 }
-                disabled={loading}
+                required
                 className="
                   h-11 w-full
                   appearance-none
@@ -217,26 +149,20 @@ export default function IngredientForm({
                   focus:border-ring
                   focus:ring-2
                   focus:ring-ring/20
-                  disabled:cursor-not-allowed
-                  disabled:opacity-60
                 "
               >
                 <option value="">
                   انتخاب نوع واحد
                 </option>
 
-                {unitOptions.map(
-                  (option) => (
-                    <option
-                      key={option.value}
-                      value={
-                        option.value
-                      }
-                    >
-                      {option.label}
-                    </option>
-                  ),
-                )}
+                {unitOptions.map((option) => (
+                  <option
+                    key={option.value}
+                    value={option.value}
+                  >
+                    {option.label}
+                  </option>
+                ))}
               </select>
 
               <ChevronDown className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
@@ -248,13 +174,10 @@ export default function IngredientForm({
             <label className="flex cursor-pointer items-start gap-3">
               <input
                 type="checkbox"
-                checked={isActive}
-                onChange={(event) =>
-                  setIsActive(
-                    event.target.checked,
-                  )
+                name="is_active"
+                defaultChecked={
+                  initialValues?.is_active ?? true
                 }
-                disabled={loading}
                 className="mt-0.5 size-4 accent-[var(--success)]"
               />
 
@@ -269,14 +192,6 @@ export default function IngredientForm({
               </div>
             </label>
           </div>
-
-          {(validationError ||
-            error) && (
-            <div className="rounded-lg border border-destructive/20 bg-destructive/5 px-4 py-3 text-sm text-destructive">
-              {validationError ??
-                error}
-            </div>
-          )}
         </div>
 
         {/* Actions */}
@@ -300,7 +215,6 @@ export default function IngredientForm({
 
           <button
             type="submit"
-            disabled={loading}
             className="
               inline-flex h-10
               items-center justify-center
@@ -313,19 +227,10 @@ export default function IngredientForm({
               shadow-sm
               transition-opacity
               hover:opacity-90
-              disabled:cursor-not-allowed
-              disabled:opacity-60
             "
           >
-            {loading ? (
-              <Loader2 className="size-4 animate-spin" />
-            ) : (
-              <Check className="size-4" />
-            )}
-
-            {loading
-              ? "در حال ذخیره..."
-              : submitLabel}
+            <Check className="size-4" />
+            {submitLabel}
           </button>
         </div>
       </form>

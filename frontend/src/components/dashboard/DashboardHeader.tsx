@@ -1,22 +1,22 @@
-"use client";
-
-import { Download } from "lucide-react";
 
 import {
+  DashboardExportButton,
+} from "./DashboardExportButton";
+import {
   DashboardDateRange,
-  type DateRangePreset,
 } from "./DashboardDateRange";
+
+import type { DashboardData } from "@/types/dashboard";
+import type { DateRangePreset } from "./dashboard-utils";
 
 type DashboardHeaderProps = {
   dateRange: DateRangePreset;
-  onDateRangeChange: (
-    preset: DateRangePreset,
-  ) => void;
+  data: DashboardData;
 };
 
 export function DashboardHeader({
   dateRange,
-  onDateRangeChange,
+  data,
 }: DashboardHeaderProps) {
   return (
     <div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
@@ -37,29 +37,13 @@ export function DashboardHeader({
       <div className="flex flex-wrap items-center gap-2">
         <DashboardDateRange
           value={dateRange}
-          onChange={onDateRangeChange}
         />
 
-        <button
-          type="button"
-          className="
-            inline-flex h-10
-            items-center gap-2
-            rounded-lg
-            bg-primary
-            px-3.5
-            text-sm font-medium
-            text-primary-foreground
-            shadow-sm
-            transition-opacity
-            hover:opacity-90
-          "
-        >
-          <Download className="size-4" />
-
-          <span>خروجی</span>
-        </button>
+        <DashboardExportButton
+          data={data}
+        />
       </div>
     </div>
   );
 }
+

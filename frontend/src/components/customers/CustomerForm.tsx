@@ -1,97 +1,29 @@
-"use client";
-
+import Link from "next/link";
 import {
   ArrowRight,
   Check,
-  Loader2,
   UserRound,
 } from "lucide-react";
-import Link from "next/link";
-import {
-  FormEvent,
-  useState,
-} from "react";
 
 import type {
   CustomerDetail,
 } from "@/types/customers";
 
-export type CustomerFormValues = {
-  name: string;
-  phone: string;
-  note: string;
-  is_active: boolean;
-};
+type CustomerAction = (
+  formData: FormData,
+) => Promise<void>;
 
 type CustomerFormProps = {
   mode: "create" | "edit";
   initialValues?: CustomerDetail | null;
-  loading?: boolean;
-  error?: string | null;
-  onSubmit: (
-    values: CustomerFormValues,
-  ) => Promise<void>;
+  action: CustomerAction;
 };
 
 export default function CustomerForm({
   mode,
   initialValues,
-  loading = false,
-  error = null,
-  onSubmit,
+  action,
 }: CustomerFormProps) {
-  const [name, setName] = useState(
-    initialValues?.name ?? "",
-  );
-
-  const [phone, setPhone] = useState(
-    initialValues?.phone ?? "",
-  );
-
-  const [note, setNote] = useState(
-    initialValues?.note ?? "",
-  );
-
-  const [isActive, setIsActive] =
-    useState(
-      initialValues?.is_active ?? true,
-    );
-
-  const [validationError, setValidationError] =
-    useState<string | null>(null);
-
-  async function handleSubmit(
-    event: FormEvent<HTMLFormElement>,
-  ) {
-    event.preventDefault();
-
-    const trimmedName =
-      name.trim();
-
-    if (!trimmedName) {
-      setValidationError(
-        "نام مشتری الزامی است.",
-      );
-      return;
-    }
-
-    if (trimmedName.length > 150) {
-      setValidationError(
-        "نام مشتری نمی‌تواند بیشتر از ۱۵۰ کاراکتر باشد.",
-      );
-      return;
-    }
-
-    setValidationError(null);
-
-    await onSubmit({
-      name: trimmedName,
-      phone: phone.trim(),
-      note: note.trim(),
-      is_active: isActive,
-    });
-  }
-
   const pageTitle =
     mode === "create"
       ? "مشتری جدید"
@@ -138,7 +70,7 @@ export default function CustomerForm({
 
       {/* Form */}
       <form
-        onSubmit={handleSubmit}
+        action={action}
         className="overflow-hidden rounded-xl border border-border bg-card shadow-sm"
       >
         <div className="space-y-6 p-5 sm:p-6">
@@ -156,16 +88,14 @@ export default function CustomerForm({
 
             <input
               id="customer-name"
+              name="name"
               type="text"
-              value={name}
-              onChange={(event) =>
-                setName(
-                  event.target.value,
-                )
+              defaultValue={
+                initialValues?.name ?? ""
               }
               placeholder="مثلاً علی رضایی"
-              disabled={loading}
               maxLength={150}
+              required
               className="
                 h-11 w-full
                 rounded-lg
@@ -178,8 +108,6 @@ export default function CustomerForm({
                 focus:border-ring
                 focus:ring-2
                 focus:ring-ring/20
-                disabled:cursor-not-allowed
-                disabled:opacity-60
               "
             />
           </div>
@@ -195,15 +123,12 @@ export default function CustomerForm({
 
             <input
               id="customer-phone"
+              name="phone"
               type="tel"
-              value={phone}
-              onChange={(event) =>
-                setPhone(
-                  event.target.value,
-                )
+              defaultValue={
+                initialValues?.phone ?? ""
               }
               placeholder="مثلاً 09121234567"
-              disabled={loading}
               maxLength={30}
               dir="ltr"
               className="
@@ -218,8 +143,6 @@ export default function CustomerForm({
                 focus:border-ring
                 focus:ring-2
                 focus:ring-ring/20
-                disabled:cursor-not-allowed
-                disabled:opacity-60
               "
             />
           </div>
@@ -235,14 +158,11 @@ export default function CustomerForm({
 
             <textarea
               id="customer-note"
-              value={note}
-              onChange={(event) =>
-                setNote(
-                  event.target.value,
-                )
+              name="note"
+              defaultValue={
+                initialValues?.note ?? ""
               }
               placeholder="یادداشت یا توضیحات مربوط به مشتری..."
-              disabled={loading}
               rows={5}
               className="
                 w-full
@@ -258,8 +178,6 @@ export default function CustomerForm({
                 focus:border-ring
                 focus:ring-2
                 focus:ring-ring/20
-                disabled:cursor-not-allowed
-                disabled:opacity-60
               "
             />
           </div>
@@ -269,13 +187,10 @@ export default function CustomerForm({
             <label className="flex cursor-pointer items-start gap-3">
               <input
                 type="checkbox"
-                checked={isActive}
-                onChange={(event) =>
-                  setIsActive(
-                    event.target.checked,
-                  )
+                name="is_active"
+                defaultChecked={
+                  initialValues?.is_active ?? true
                 }
-                disabled={loading}
                 className="mt-0.5 size-4 accent-[var(--success)]"
               />
 
@@ -291,15 +206,6 @@ export default function CustomerForm({
               </div>
             </label>
           </div>
-
-          {/* Errors */}
-          {(validationError ||
-            error) && (
-            <div className="rounded-lg border border-destructive/20 bg-destructive/5 px-4 py-3 text-sm text-destructive">
-              {validationError ??
-                error}
-            </div>
-          )}
         </div>
 
         {/* Actions */}
@@ -323,7 +229,6 @@ export default function CustomerForm({
 
           <button
             type="submit"
-            disabled={loading}
             className="
               inline-flex h-10
               items-center justify-center
@@ -336,19 +241,11 @@ export default function CustomerForm({
               shadow-sm
               transition-opacity
               hover:opacity-90
-              disabled:cursor-not-allowed
-              disabled:opacity-60
             "
           >
-            {loading ? (
-              <Loader2 className="size-4 animate-spin" />
-            ) : (
-              <Check className="size-4" />
-            )}
+            <Check className="size-4" />
 
-            {loading
-              ? "در حال ذخیره..."
-              : submitLabel}
+            {submitLabel}
           </button>
         </div>
       </form>

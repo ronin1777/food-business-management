@@ -6,23 +6,12 @@ import {
   ChevronDown,
 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 
-export type DateRangePreset =
-  | "last_7_days"
-  | "last_30_days"
-  | "this_month"
-  | "last_month";
-
-export type DateRange = {
-  dateFrom: string;
-  dateTo: string;
-};
+import type { DateRangePreset } from "./dashboard-utils";
 
 type DashboardDateRangeProps = {
   value: DateRangePreset;
-  onChange: (
-    preset: DateRangePreset,
-  ) => void;
 };
 
 const presets: {
@@ -57,66 +46,13 @@ function getPresetLabel(
   );
 }
 
-export function getDateRangeFromPreset(
-  preset: DateRangePreset,
-): DateRange {
-  const today = new Date();
-
-  const dateTo = new Date(today);
-  dateTo.setHours(0, 0, 0, 0);
-
-  const dateFrom = new Date(today);
-  dateFrom.setHours(0, 0, 0, 0);
-
-  switch (preset) {
-    case "last_7_days":
-      dateFrom.setDate(
-        dateFrom.getDate() - 6,
-      );
-      break;
-
-    case "last_30_days":
-      dateFrom.setDate(
-        dateFrom.getDate() - 29,
-      );
-      break;
-
-    case "this_month":
-      dateFrom.setDate(1);
-      break;
-
-    case "last_month":
-      dateFrom.setMonth(
-        dateFrom.getMonth() - 1,
-        1,
-      );
-
-      dateTo.setDate(0);
-      break;
-  }
-
-  return {
-    dateFrom: formatDateForApi(dateFrom),
-    dateTo: formatDateForApi(dateTo),
-  };
-}
-
-function formatDateForApi(date: Date) {
-  const year = date.getFullYear();
-  const month = String(
-    date.getMonth() + 1,
-  ).padStart(2, "0");
-  const day = String(
-    date.getDate(),
-  ).padStart(2, "0");
-
-  return `${year}-${month}-${day}`;
-}
-
 export function DashboardDateRange({
   value,
-  onChange,
 }: DashboardDateRangeProps) {
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+
   const [open, setOpen] =
     useState(false);
 
@@ -150,6 +86,23 @@ export function DashboardDateRange({
     };
   }, []);
 
+  function handleChange(
+    preset: DateRangePreset,
+  ) {
+    const params =
+      new URLSearchParams(
+        searchParams.toString(),
+      );
+
+    params.set("range", preset);
+
+    router.push(
+      `${pathname}?${params.toString()}`,
+    );
+
+    setOpen(false);
+  }
+
   return (
     <div
       ref={containerRef}
@@ -173,13 +126,19 @@ export function DashboardDateRange({
           shadow-sm
           transition-colors
           hover:bg-accent
+          focus-visible:outline-none
+          focus-visible:ring-2
+          focus-visible:ring-ring
+          focus-visible:ring-offset-2
         "
         aria-expanded={open}
         aria-haspopup="menu"
       >
         <CalendarDays className="size-4 text-muted-foreground" />
 
-        <span>{getPresetLabel(value)}</span>
+        <span>
+          {getPresetLabel(value)}
+        </span>
 
         <ChevronDown
           className={[
@@ -211,10 +170,11 @@ export function DashboardDateRange({
               <button
                 key={preset.value}
                 type="button"
-                onClick={() => {
-                  onChange(preset.value);
-                  setOpen(false);
-                }}
+                onClick={() =>
+                  handleChange(
+                    preset.value,
+                  )
+                }
                 className={[
                   "flex w-full items-center justify-between",
                   "rounded-lg px-3 py-2.5",
@@ -225,7 +185,9 @@ export function DashboardDateRange({
                 ].join(" ")}
                 role="menuitem"
               >
-                <span>{preset.label}</span>
+                <span>
+                  {preset.label}
+                </span>
 
                 {isActive && (
                   <Check className="size-4" />

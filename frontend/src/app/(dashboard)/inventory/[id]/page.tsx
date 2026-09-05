@@ -1,7 +1,5 @@
-"use client";
-
 import Link from "next/link";
-import { use, useEffect, useState } from "react";
+import { notFound } from "next/navigation";
 import {
   ArrowDownLeft,
   ArrowLeft,
@@ -12,15 +10,18 @@ import {
   User,
 } from "lucide-react";
 
-import { getInventoryTransaction } from "@/lib/api/inventory";
+import { getInventoryTransactionServer } from "@/lib/api/inventory-server";
 
 import type {
   InventoryTransactionDetail,
+  InventoryTransactionDetailResponse,
   InventoryTransactionType,
 } from "@/types/inventory";
 
 type InventoryTransactionDetailPageProps = {
-  params: Promise<{ id: string }>;
+  params: Promise<{
+    id: string;
+  }>;
 };
 
 const TRANSACTION_TYPE_LABELS: Record<
@@ -50,87 +51,57 @@ function formatDateTime(value: string) {
   });
 }
 
-export default function InventoryTransactionDetailPage({
+function extractTransaction(
+  response:
+    | InventoryTransactionDetail
+    | InventoryTransactionDetailResponse,
+): InventoryTransactionDetail {
+  if (
+    response &&
+    typeof response === "object" &&
+    "data" in response &&
+    response.data
+  ) {
+    return response.data;
+  }
+
+  return response as InventoryTransactionDetail;
+}
+
+export default async function InventoryTransactionDetailPage({
   params,
 }: InventoryTransactionDetailPageProps) {
-  const { id } = use(params);
+  const { id } = await params;
 
   const transactionId = Number(id);
 
-  const [transaction, setTransaction] =
-    useState<InventoryTransactionDetail | null>(null);
-
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    if (!Number.isInteger(transactionId)) {
-      setError("شناسه تراکنش نامعتبر است.");
-      setLoading(false);
-      return;
-    }
-
-    async function loadTransaction() {
-      try {
-        setLoading(true);
-        setError(null);
-
-        const response =
-          await getInventoryTransaction(
-            transactionId,
-          );
-
-        setTransaction(response.data);
-      } catch (error) {
-        setError(
-          error instanceof Error
-            ? error.message
-            : "خطا در دریافت اطلاعات تراکنش.",
-        );
-      } finally {
-        setLoading(false);
-      }
-    }
-
-    loadTransaction();
-  }, [transactionId]);
-
-  if (loading) {
-    return (
-      <div className="flex min-h-[400px] items-center justify-center">
-        <p className="text-sm text-muted-foreground">
-          در حال دریافت اطلاعات تراکنش...
-        </p>
-      </div>
-    );
+  if (
+    !Number.isInteger(transactionId) ||
+    transactionId <= 0
+  ) {
+    notFound();
   }
 
-  if (error || !transaction) {
-    return (
-      <div className="flex min-h-[400px] items-center justify-center">
-        <div className="text-center">
-          <p className="text-sm text-destructive">
-            {error ?? "تراکنش پیدا نشد."}
-          </p>
-
-          <Link
-            href="/inventory"
-            className="mt-4 inline-flex items-center gap-2 text-sm font-medium hover:underline"
-          >
-            بازگشت به گردش موجودی
-            <ArrowLeft className="size-4" />
-          </Link>
-        </div>
-      </div>
+  const response =
+    await getInventoryTransactionServer(
+      transactionId,
     );
+
+  const transaction =
+    extractTransaction(response);
+
+  if (!transaction) {
+    notFound();
   }
 
-  const isIncrease = transaction.quantity > 0;
+  const isIncrease =
+    transaction.quantity > 0;
 
   const transactionType =
     TRANSACTION_TYPE_LABELS[
       transaction.transaction_type
-    ] ?? transaction.transaction_type_display;
+    ] ??
+    transaction.transaction_type_display;
 
   return (
     <div className="space-y-6">
@@ -199,7 +170,7 @@ export default function InventoryTransactionDetailPage({
 
             <Link
               href={`/ingredients/${transaction.ingredient}`}
-              className="mt-2 inline-block text-sm font-medium hover:underline"
+              className="mt-2 inline-block text-sm font-medium transition-colors hover:underline"
             >
               {transaction.ingredient_name}
             </Link>
@@ -219,7 +190,10 @@ export default function InventoryTransactionDetailPage({
               }`}
             >
               {isIncrease ? "+" : ""}
-              {formatNumber(transaction.quantity)}
+
+              {formatNumber(
+                transaction.quantity,
+              )}
             </p>
           </div>
 

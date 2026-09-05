@@ -28,6 +28,7 @@ DEBUG = True
 ALLOWED_HOSTS = [
     "127.0.0.1",
     "localhost",
+    "192.168.1.6",
 ]
 
 
@@ -158,7 +159,7 @@ AUTH_USER_MODEL = "accounts.User"
 
 REST_FRAMEWORK = {
     "DEFAULT_AUTHENTICATION_CLASSES": [
-        "apps.accounts.authentication.CookieJWTAuthentication",
+        "apps.accounts.authentication.CookieOrBearerJWTAuthentication",
     ],
 
     "DEFAULT_PERMISSION_CLASSES": [

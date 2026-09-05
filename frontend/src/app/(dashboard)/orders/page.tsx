@@ -1,160 +1,128 @@
-"use client";
-
-import { useEffect, useMemo, useState } from "react";
+import Link from "next/link";
 import {
   Plus,
   RefreshCw,
 } from "lucide-react";
 
-import Link from "next/link";
-
-import { getOrders } from "@/lib/api/orders";
-
-import type {
-  Order,
-  OrderFilters,
-} from "@/types/orders";
+import { getOrdersServer } from "@/lib/api/orders-server";
 
 import { OrdersFilters } from "@/components/orders/OrdersFilters";
 import { OrdersTable } from "@/components/orders/OrdersTable";
 
-export default function OrdersPage() {
-  const [orders, setOrders] = useState<Order[]>(
-    [],
+type OrdersPageProps = {
+  searchParams: Promise<{
+    page?: string;
+    search?: string;
+    customer?: string;
+    status?: string;
+    paymentStatus?: string;
+    orderedAtAfter?: string;
+    orderedAtBefore?: string;
+    ordering?: string;
+  }>;
+};
+
+function formatNumber(value: number) {
+  return new Intl.NumberFormat("fa-IR").format(
+    value,
+  );
+}
+
+function buildPageUrl(
+  params: OrdersPageProps["searchParams"] extends Promise<
+    infer T
+  >
+    ? T
+    : never,
+  page: number,
+) {
+  const searchParams = new URLSearchParams();
+
+  Object.entries(params).forEach(
+    ([key, value]) => {
+      if (value && key !== "page") {
+        searchParams.set(key, value);
+      }
+    },
   );
 
-  const [filters, setFilters] =
-    useState<OrderFilters>({
-      page: 1,
-      pageSize: 20,
-      ordering: "-ordered_at",
-    });
+  searchParams.set("page", String(page));
 
-  const [totalCount, setTotalCount] =
-    useState(0);
+  const query = searchParams.toString();
 
-  const [loading, setLoading] =
-    useState(true);
+  return `/orders${query ? `?${query}` : ""}`;
+}
 
-  const [error, setError] =
-    useState<string | null>(null);
+export default async function OrdersPage({
+  searchParams,
+}: OrdersPageProps) {
+  const params = await searchParams;
 
-  const [next, setNext] =
-    useState<string | null>(null);
+  const page = Math.max(
+    1,
+    Number(params.page) || 1,
+  );
 
-  const [previous, setPrevious] =
-    useState<string | null>(null);
+  const customerId = params.customer
+    ? Number(params.customer)
+    : undefined;
 
-  useEffect(() => {
-    let cancelled = false;
+  const customer =
+    customerId &&
+    Number.isInteger(customerId) &&
+    customerId > 0
+      ? customerId
+      : undefined;
 
-    async function loadOrders() {
-      try {
-        setLoading(true);
-        setError(null);
+  const status =
+    params.status === "completed" ||
+    params.status === "cancelled"
+      ? params.status
+      : undefined;
 
-        const response =
-          await getOrders(filters);
+  const paymentStatus =
+    params.paymentStatus === "paid" ||
+    params.paymentStatus ===
+      "partially_paid" ||
+    params.paymentStatus === "unpaid"
+      ? params.paymentStatus
+      : undefined;
 
-        if (cancelled) {
-          return;
-        }
+  const ordering =
+    params.ordering || "-ordered_at";
 
-        setOrders(
-          response.data.results,
-        );
+  const response = await getOrdersServer({
+    page,
+    pageSize: 20,
+    search: params.search?.trim() || undefined,
+    customer,
+    status,
+    paymentStatus,
+    orderedAtAfter:
+      params.orderedAtAfter || undefined,
+    orderedAtBefore:
+      params.orderedAtBefore || undefined,
+    ordering,
+  });
 
-        setTotalCount(
-          response.data.count,
-        );
+  const data = response.data;
 
-        setNext(response.data.next);
-        setPrevious(
-          response.data.previous,
-        );
-      } catch (error) {
-        if (cancelled) {
-          return;
-        }
+  const orders = data.results;
+  const totalCount = data.count;
 
-        console.error(
-          "Orders error:",
-          error,
-        );
+  const hasPrevious = Boolean(
+    data.previous,
+  );
 
-        setError(
-          error instanceof Error
-            ? error.message
-            : "خطایی در دریافت سفارش‌ها رخ داد.",
-        );
-      } finally {
-        if (!cancelled) {
-          setLoading(false);
-        }
-      }
-    }
+  const hasNext = Boolean(data.next);
 
-    loadOrders();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [filters]);
-
-  const currentPage =
-    filters.page ?? 1;
-
-  const hasNext = Boolean(next);
-  const hasPrevious =
-    Boolean(previous);
-
-  const pageCount = useMemo(() => {
-    return Math.max(
-      1,
-      Math.ceil(
-        totalCount /
-          (filters.pageSize ?? 20),
-      ),
-    );
-  }, [
-    totalCount,
-    filters.pageSize,
-  ]);
-
-  function handleFiltersChange(
-    nextFilters: OrderFilters,
-  ) {
-    setFilters(nextFilters);
-  }
-
-  function goToPrevious() {
-    if (!hasPrevious) {
-      return;
-    }
-
-    setFilters((current) => ({
-      ...current,
-      page: Math.max(
-        1,
-        (current.page ?? 1) - 1,
-      ),
-    }));
-  }
-
-  function goToNext() {
-    if (!hasNext) {
-      return;
-    }
-
-    setFilters((current) => ({
-      ...current,
-      page: (current.page ?? 1) + 1,
-    }));
-  }
+  const pageCount = Math.max(
+    1,
+    Math.ceil(totalCount / 20),
+  );
 
   return (
     <div className="space-y-6">
-      {/* Header */}
       <section className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
         <div>
           <p className="text-sm font-medium text-muted-foreground">
@@ -171,14 +139,8 @@ export default function OrdersPage() {
         </div>
 
         <div className="flex items-center gap-2">
-          <button
-            type="button"
-            onClick={() =>
-              setFilters((current) => ({
-                ...current,
-                page: current.page ?? 1,
-              }))
-            }
+          <Link
+            href="/orders"
             className="
               inline-flex h-10
               items-center gap-2
@@ -198,7 +160,7 @@ export default function OrdersPage() {
             <span className="hidden sm:inline">
               بروزرسانی
             </span>
-          </button>
+          </Link>
 
           <Link
             href="/orders/new"
@@ -217,117 +179,115 @@ export default function OrdersPage() {
           >
             <Plus className="size-4" />
 
-            <span>
-              سفارش جدید
-            </span>
+            <span>سفارش جدید</span>
           </Link>
         </div>
       </section>
 
-      {/* Main Card */}
       <section className="overflow-hidden rounded-xl border border-border bg-card shadow-sm">
-        {/* Filters */}
-        <OrdersFilters
-          filters={filters}
-          onChange={handleFiltersChange}
-        />
+        <OrdersFilters />
 
-        {/* Loading */}
-        {loading ? (
-          <div className="flex min-h-[400px] items-center justify-center">
-            <div className="flex items-center gap-2 text-sm text-muted-foreground">
-              <RefreshCw className="size-4 animate-spin" />
+        {orders.length === 0 ? (
+          <div className="flex min-h-[360px] flex-col items-center justify-center px-6 text-center">
+            <p className="text-sm font-medium">
+              سفارشی پیدا نشد
+            </p>
 
-              <span>
-                در حال دریافت سفارش‌ها...
-              </span>
-            </div>
-          </div>
-        ) : error ? (
-          <div className="flex min-h-[400px] items-center justify-center px-6">
-            <div className="w-full max-w-md rounded-xl border border-destructive/20 bg-destructive/5 p-6 text-center">
-              <p className="text-sm font-medium text-destructive">
-                خطا در دریافت سفارش‌ها
-              </p>
-
-              <p className="mt-2 text-sm leading-6 text-destructive/80">
-                {error}
-              </p>
-            </div>
+            <p className="mt-1 max-w-sm text-xs leading-5 text-muted-foreground">
+              با تغییر فیلترها یا ثبت سفارش جدید،
+              اطلاعات اینجا نمایش داده می‌شود.
+            </p>
           </div>
         ) : (
-          <>
-            <OrdersTable
-              orders={orders}
-            />
-
-            {/* Footer */}
-            <div className="flex flex-col gap-3 border-t border-border px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
-              <p className="text-xs text-muted-foreground">
-                مجموع{" "}
-                <span className="font-medium text-foreground">
-                  {new Intl.NumberFormat(
-                    "fa-IR",
-                  ).format(totalCount)}
-                </span>{" "}
-                سفارش
-              </p>
-
-              <div className="flex items-center gap-2">
-                <button
-                  type="button"
-                  disabled={!hasPrevious}
-                  onClick={goToPrevious}
-                  className="
-                    rounded-lg
-                    border border-border
-                    px-3 py-2
-                    text-xs font-medium
-                    transition-colors
-                    hover:bg-accent
-                    disabled:cursor-not-allowed
-                    disabled:opacity-40
-                  "
-                >
-                  قبلی
-                </button>
-
-                <span className="min-w-20 text-center text-xs text-muted-foreground">
-                  صفحه{" "}
-                  <span className="font-medium text-foreground">
-                    {new Intl.NumberFormat(
-                      "fa-IR",
-                    ).format(currentPage)}
-                  </span>{" "}
-                  از{" "}
-                  <span className="font-medium text-foreground">
-                    {new Intl.NumberFormat(
-                      "fa-IR",
-                    ).format(pageCount)}
-                  </span>
-                </span>
-
-                <button
-                  type="button"
-                  disabled={!hasNext}
-                  onClick={goToNext}
-                  className="
-                    rounded-lg
-                    border border-border
-                    px-3 py-2
-                    text-xs font-medium
-                    transition-colors
-                    hover:bg-accent
-                    disabled:cursor-not-allowed
-                    disabled:opacity-40
-                  "
-                >
-                  بعدی
-                </button>
-              </div>
-            </div>
-          </>
+          <OrdersTable orders={orders} />
         )}
+
+        <div className="flex flex-col gap-3 border-t border-border px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
+          <p className="text-xs text-muted-foreground">
+            مجموع{" "}
+            <span className="font-medium text-foreground">
+              {formatNumber(totalCount)}
+            </span>{" "}
+            سفارش
+          </p>
+
+          <div className="flex items-center gap-2">
+            {hasPrevious ? (
+              <Link
+                href={buildPageUrl(
+                  params,
+                  page - 1,
+                )}
+                className="
+                  rounded-lg
+                  border border-border
+                  px-3 py-2
+                  text-xs font-medium
+                  transition-colors
+                  hover:bg-accent
+                "
+              >
+                قبلی
+              </Link>
+            ) : (
+              <span
+                className="
+                  cursor-not-allowed
+                  rounded-lg
+                  border border-border
+                  px-3 py-2
+                  text-xs font-medium
+                  opacity-40
+                "
+              >
+                قبلی
+              </span>
+            )}
+
+            <span className="min-w-20 text-center text-xs text-muted-foreground">
+              صفحه{" "}
+              <span className="font-medium text-foreground">
+                {formatNumber(page)}
+              </span>{" "}
+              از{" "}
+              <span className="font-medium text-foreground">
+                {formatNumber(pageCount)}
+              </span>
+            </span>
+
+            {hasNext ? (
+              <Link
+                href={buildPageUrl(
+                  params,
+                  page + 1,
+                )}
+                className="
+                  rounded-lg
+                  border border-border
+                  px-3 py-2
+                  text-xs font-medium
+                  transition-colors
+                  hover:bg-accent
+                "
+              >
+                بعدی
+              </Link>
+            ) : (
+              <span
+                className="
+                  cursor-not-allowed
+                  rounded-lg
+                  border border-border
+                  px-3 py-2
+                  text-xs font-medium
+                  opacity-40
+                "
+              >
+                بعدی
+              </span>
+            )}
+          </div>
+        </div>
       </section>
     </div>
   );

@@ -1,89 +1,27 @@
-"use client";
-
 import {
   ArrowRight,
   Check,
-  Loader2,
   Truck,
 } from "lucide-react";
 import Link from "next/link";
-import {
-  FormEvent,
-  useState,
-} from "react";
 
 import type { SupplierDetail } from "@/types/suppliers";
 
-export type SupplierFormValues = {
-  name: string;
-  phone: string;
-  is_active: boolean;
-};
+type SupplierAction = (
+  formData: FormData,
+) => Promise<void>;
 
 type SupplierFormProps = {
   mode: "create" | "edit";
   initialValues?: SupplierDetail | null;
-  loading?: boolean;
-  error?: string | null;
-  onSubmit: (
-    values: SupplierFormValues,
-  ) => Promise<void>;
+  action: SupplierAction;
 };
 
 export default function SupplierForm({
   mode,
   initialValues,
-  loading = false,
-  error = null,
-  onSubmit,
+  action,
 }: SupplierFormProps) {
-  const [name, setName] = useState(
-    initialValues?.name ?? "",
-  );
-
-  const [phone, setPhone] = useState(
-    initialValues?.phone ?? "",
-  );
-
-  const [isActive, setIsActive] =
-    useState(
-      initialValues?.is_active ?? true,
-    );
-
-  const [validationError, setValidationError] =
-    useState<string | null>(null);
-
-  async function handleSubmit(
-    event: FormEvent<HTMLFormElement>,
-  ) {
-    event.preventDefault();
-
-    const trimmedName =
-      name.trim();
-
-    if (!trimmedName) {
-      setValidationError(
-        "نام تأمین‌کننده الزامی است.",
-      );
-      return;
-    }
-
-    if (trimmedName.length > 150) {
-      setValidationError(
-        "نام تأمین‌کننده نمی‌تواند بیشتر از ۱۵۰ کاراکتر باشد.",
-      );
-      return;
-    }
-
-    setValidationError(null);
-
-    await onSubmit({
-      name: trimmedName,
-      phone: phone.trim(),
-      is_active: isActive,
-    });
-  }
-
   const title =
     mode === "create"
       ? "تأمین‌کننده جدید"
@@ -130,7 +68,7 @@ export default function SupplierForm({
 
       {/* Form */}
       <form
-        onSubmit={handleSubmit}
+        action={action}
         className="overflow-hidden rounded-xl border border-border bg-card shadow-sm"
       >
         <div className="space-y-6 p-5 sm:p-6">
@@ -148,16 +86,14 @@ export default function SupplierForm({
 
             <input
               id="supplier-name"
+              name="name"
               type="text"
-              value={name}
-              onChange={(event) =>
-                setName(
-                  event.target.value,
-                )
+              defaultValue={
+                initialValues?.name ?? ""
               }
               maxLength={150}
+              required
               placeholder="مثلاً شرکت پخش آریا"
-              disabled={loading}
               className="
                 h-11 w-full
                 rounded-lg
@@ -170,8 +106,6 @@ export default function SupplierForm({
                 focus:border-ring
                 focus:ring-2
                 focus:ring-ring/20
-                disabled:cursor-not-allowed
-                disabled:opacity-60
               "
             />
           </div>
@@ -187,16 +121,13 @@ export default function SupplierForm({
 
             <input
               id="supplier-phone"
+              name="phone"
               type="tel"
-              value={phone}
-              onChange={(event) =>
-                setPhone(
-                  event.target.value,
-                )
+              defaultValue={
+                initialValues?.phone ?? ""
               }
               maxLength={30}
               placeholder="مثلاً 09121234567"
-              disabled={loading}
               dir="ltr"
               className="
                 h-11 w-full
@@ -211,8 +142,6 @@ export default function SupplierForm({
                 focus:border-ring
                 focus:ring-2
                 focus:ring-ring/20
-                disabled:cursor-not-allowed
-                disabled:opacity-60
               "
             />
           </div>
@@ -222,13 +151,10 @@ export default function SupplierForm({
             <label className="flex cursor-pointer items-start gap-3">
               <input
                 type="checkbox"
-                checked={isActive}
-                onChange={(event) =>
-                  setIsActive(
-                    event.target.checked,
-                  )
+                name="is_active"
+                defaultChecked={
+                  initialValues?.is_active ?? true
                 }
-                disabled={loading}
                 className="mt-0.5 size-4 accent-[var(--success)]"
               />
 
@@ -238,20 +164,12 @@ export default function SupplierForm({
                 </p>
 
                 <p className="mt-1 text-xs leading-5 text-muted-foreground">
-                  تأمین‌کنندگان غیرفعال در خریدهای جدید قابل انتخاب نخواهند بود.
+                  تأمین‌کنندگان غیرفعال در خریدهای
+                  جدید قابل انتخاب نخواهند بود.
                 </p>
               </div>
             </label>
           </div>
-
-          {/* Errors */}
-          {(validationError ||
-            error) && (
-            <div className="rounded-lg border border-destructive/20 bg-destructive/5 px-4 py-3 text-sm text-destructive">
-              {validationError ??
-                error}
-            </div>
-          )}
         </div>
 
         {/* Actions */}
@@ -275,7 +193,6 @@ export default function SupplierForm({
 
           <button
             type="submit"
-            disabled={loading}
             className="
               inline-flex h-10
               items-center justify-center
@@ -288,19 +205,11 @@ export default function SupplierForm({
               shadow-sm
               transition-opacity
               hover:opacity-90
-              disabled:cursor-not-allowed
-              disabled:opacity-60
             "
           >
-            {loading ? (
-              <Loader2 className="size-4 animate-spin" />
-            ) : (
-              <Check className="size-4" />
-            )}
+            <Check className="size-4" />
 
-            {loading
-              ? "در حال ذخیره..."
-              : submitLabel}
+            {submitLabel}
           </button>
         </div>
       </form>

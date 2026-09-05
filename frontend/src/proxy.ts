@@ -1,4 +1,13 @@
+
 import { NextRequest, NextResponse } from "next/server";
+
+const API_URL = process.env.NEXT_PUBLIC_API_URL;
+
+if (!API_URL) {
+  throw new Error(
+    "NEXT_PUBLIC_API_URL is not configured.",
+  );
+}
 
 const PROTECTED_PATHS = [
   "/dashboard",
@@ -13,25 +22,189 @@ const PROTECTED_PATHS = [
   "/suppliers",
 ];
 
-export function proxy(request: NextRequest) {
-  const { pathname } = request.nextUrl;
+const REFRESH_ENDPOINT = "/api/auth/refresh/";
 
-  const accessToken =
-    request.cookies.get("access_token")?.value;
-
-  const isProtectedPath = PROTECTED_PATHS.some(
+function isProtectedPath(pathname: string) {
+  return PROTECTED_PATHS.some(
     (path) =>
       pathname === path ||
       pathname.startsWith(`${path}/`),
   );
+}
 
-  if (isProtectedPath && !accessToken) {
+function isTokenExpired(token: string) {
+  try {
+    const parts = token.split(".");
+
+    if (parts.length !== 3) {
+      return true;
+    }
+
+    const payload = JSON.parse(
+      Buffer.from(
+        parts[1],
+        "base64url",
+      ).toString("utf-8"),
+    );
+
+    if (typeof payload.exp !== "number") {
+      return true;
+    }
+
+    return payload.exp * 1000 <= Date.now();
+  } catch {
+    return true;
+  }
+}
+
+async function refreshAccessToken(
+  refreshToken: string,
+): Promise<string | null> {
+  try {
+    const response = await fetch(
+      `${API_URL}${REFRESH_ENDPOINT}`,
+      {
+        method: "POST",
+        headers: {
+          Cookie: `refresh_token=${refreshToken}`,
+        },
+        cache: "no-store",
+      },
+    );
+
+    if (!response.ok) {
+      return null;
+    }
+
+    const setCookie = response.headers.get(
+      "set-cookie",
+    );
+
+    if (!setCookie) {
+      return null;
+    }
+
+    const match = setCookie.match(
+      /(?:^|,\s*)access_token=([^;]+)/,
+    );
+
+    if (!match) {
+      return null;
+    }
+
+    return match[1];
+  } catch (error) {
+    console.error(
+      "Access token refresh failed:",
+      error,
+    );
+
+    return null;
+  }
+}
+
+export async function proxy(
+  request: NextRequest,
+) {
+  const { pathname } = request.nextUrl;
+
+  if (!isProtectedPath(pathname)) {
+    return NextResponse.next();
+  }
+
+  const accessToken =
+    request.cookies.get("access_token")?.value;
+
+  if (!accessToken) {
     return NextResponse.redirect(
       new URL("/login", request.url),
     );
   }
 
-  return NextResponse.next();
+  if (!isTokenExpired(accessToken)) {
+    return NextResponse.next();
+  }
+
+  const refreshToken =
+    request.cookies.get("refresh_token")?.value;
+
+  if (!refreshToken) {
+    const response =
+      NextResponse.redirect(
+        new URL("/login", request.url),
+      );
+
+    response.cookies.delete({
+      name: "access_token",
+      path: "/",
+    });
+
+    response.cookies.delete({
+      name: "refresh_token",
+      path: "/",
+    });
+
+    return response;
+  }
+
+  const newAccessToken =
+    await refreshAccessToken(refreshToken);
+
+  if (!newAccessToken) {
+    const response =
+      NextResponse.redirect(
+        new URL("/login", request.url),
+      );
+
+    response.cookies.delete({
+      name: "access_token",
+      path: "/",
+    });
+
+    response.cookies.delete({
+      name: "refresh_token",
+      path: "/",
+    });
+
+    response.cookies.delete({
+      name: "refresh_token",
+      path: "/api/auth/",
+    });
+
+    return response;
+  }
+
+  /*
+   * مهم:
+   * توکن جدید را روی request هم قرار می‌دهیم
+   * تا Server Component در همین request
+   * بتواند آن را ببیند.
+   */
+  request.cookies.set(
+    "access_token",
+    newAccessToken,
+  );
+
+  const response =
+    NextResponse.next({
+      request,
+    });
+
+  /*
+   * توکن جدید را روی response هم قرار می‌دهیم
+   * تا Browser آن را ذخیره کند.
+   */
+  response.cookies.set({
+    name: "access_token",
+    value: newAccessToken,
+    httpOnly: true,
+    secure: false,
+    sameSite: "lax",
+    maxAge: 15 * 60,
+    path: "/",
+  });
+
+  return response;
 }
 
 export const config = {
@@ -48,103 +221,3 @@ export const config = {
     "/suppliers/:path*",
   ],
 };
-
-
-
-
-// proxy.ts
-// import { NextRequest, NextResponse } from "next/server";
-
-// // تنها مسیرهایی که بدون احراز هویت هم قابل دسترسی‌اند
-// const PUBLIC_PATHS = [
-//   "/login",
-//   // اگه صفحات عمومی دیگه‌ای دارید (مثلاً ثبت‌نام، فراموشی رمز) اینجا اضافه کنید:
-//   // "/register",
-//   // "/forgot-password",
-// ];
-
-// function isExpired(token: string): boolean {
-//   try {
-//     const payload = JSON.parse(
-//       Buffer.from(token.split(".")[1], "base64").toString("utf-8"),
-//     );
-//     return Date.now() >= payload.exp * 1000 - 10_000;
-//   } catch {
-//     return true;
-//   }
-// }
-
-// async function refreshAccessToken(refreshToken: string): Promise<string | null> {
-//   try {
-//     const res = await fetch(`${process.env.DJANGO_API_URL}/api/token/refresh/`, {
-//       method: "POST",
-//       headers: { "Content-Type": "application/json" },
-//       body: JSON.stringify({ refresh: refreshToken }),
-//     });
-//     if (!res.ok) return null;
-//     const data = await res.json();
-//     return data.access as string;
-//   } catch {
-//     return null;
-//   }
-// }
-
-// export async function proxy(request: NextRequest) {
-//   const { pathname } = request.nextUrl;
-
-//   const isPublicPath = PUBLIC_PATHS.some(
-//     (path) => pathname === path || pathname.startsWith(`${path}/`),
-//   );
-
-//   const accessToken = request.cookies.get("access_token")?.value;
-//   const refreshToken = request.cookies.get("refresh_token")?.value;
-
-//   let validAccessToken =
-//     accessToken && !isExpired(accessToken) ? accessToken : null;
-
-//   if (!validAccessToken && refreshToken) {
-//     validAccessToken = await refreshAccessToken(refreshToken);
-//   }
-
-//   // حالت ۱: مسیر عمومیه (login) ولی کاربر از قبل لاگینه → بفرستش داشبورد
-//   if (isPublicPath) {
-//     if (validAccessToken) {
-//       return NextResponse.redirect(new URL("/dashboard", request.url));
-//     }
-//     return NextResponse.next();
-//   }
-
-//   // حالت ۲: هر مسیر دیگه‌ای (پیش‌فرض: محافظت‌شده) و کاربر احراز هویت نشده
-//   if (!validAccessToken) {
-//     const loginUrl = new URL("/login", request.url);
-//     loginUrl.searchParams.set("next", pathname);
-//     const response = NextResponse.redirect(loginUrl);
-//     response.cookies.delete("access_token");
-//     response.cookies.delete("refresh_token");
-//     return response;
-//   }
-
-//   // حالت ۳: مسیر محافظت‌شده و کاربر معتبره
-//   const response = NextResponse.next();
-//   if (validAccessToken !== accessToken) {
-//     response.cookies.set("access_token", validAccessToken, {
-//       httpOnly: true,
-//       secure: process.env.NODE_ENV === "production",
-//       sameSite: "lax",
-//       path: "/",
-//     });
-//   }
-//   return response;
-// }
-
-// export const config = {
-//   matcher: [
-//     /*
-//      * روی همه‌چیز اجرا شو به‌جز:
-//      * - فایل‌های استاتیک نکست (_next/static, _next/image)
-//      * - favicon و فایل‌های عمومی داخل public/ (تشخیص با وجود پسوند فایل)
-//      * - API روت‌های خودتون که ربطی به auth ندارن (اختیاری، اگه لازم شد اضافه کنید)
-//      */
-//     "/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico)$).*)",
-//   ],
-// };

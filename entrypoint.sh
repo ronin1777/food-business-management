@@ -5,6 +5,7 @@ echo "Running database migrations..."
 python manage.py migrate --noinput
 
 echo "Checking superuser..."
+
 python manage.py shell <<'PY'
 import os
 from django.contrib.auth import get_user_model
@@ -31,7 +32,5 @@ else:
 PY
 
 echo "Starting Gunicorn..."
-exec gunicorn \
-    --bind 0.0.0.0:8000 \
-    --workers 2 \
-    config.wsgi:application
+
+exec gunicorn --bind 0.0.0.0:8000 --workers 2 config.wsgi:application

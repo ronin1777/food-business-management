@@ -252,6 +252,8 @@ class SupplierPayment(models.Model):
     supplier = models.ForeignKey(
         Supplier,
         on_delete=models.PROTECT,
+        null=True,
+        blank=True,
         related_name="payments",
     )
 

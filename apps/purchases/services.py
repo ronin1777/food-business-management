@@ -637,60 +637,186 @@ class SupplierPaymentService:
     def create_payment(
         *,
         organization: Organization,
-        supplier: Supplier,
-        amount: Decimal,
+        supplier: Supplier | None = None,
+        amount: Decimal | None = None,
         method: str,
         paid_at: Any,
         purchase: Purchase | None = None,
         note: str = "",
     ) -> SupplierPayment:
+
         # ----------------------------------------------------
-        # Basic validation
+        # Purchase is required for both payment types
         # ----------------------------------------------------
 
-        if supplier.organization_id != organization.id:
+        if purchase is None:
             raise ValidationError(
                 {
-                    "supplier": (
-                        "این تأمین‌کننده متعلق به "
+                    "purchase": (
+                        "پرداخت باید به یک خرید مرتبط باشد."
+                    )
+                }
+            )
+
+        # ----------------------------------------------------
+        # Validate purchase organization
+        # ----------------------------------------------------
+
+        if purchase.organization_id != organization.id:
+            raise ValidationError(
+                {
+                    "purchase": (
+                        "این خرید متعلق به "
                         "کسب‌وکار شما نیست."
                     )
                 }
             )
 
-        if not supplier.is_active:
+        if purchase.status == PurchaseStatus.CANCELLED:
             raise ValidationError(
                 {
-                    "supplier": (
-                        "این تأمین‌کننده غیرفعال است."
-                    )
-                }
-            )
-
-        if amount <= Decimal("0"):
-            raise ValidationError(
-                {
-                    "amount": (
-                        "مبلغ پرداخت باید بیشتر از صفر باشد."
+                    "purchase": (
+                        "برای خرید لغوشده "
+                        "نمی‌توان پرداخت ثبت کرد."
                     )
                 }
             )
 
         # ----------------------------------------------------
-        # Validate purchase
+        # Lock purchase
         # ----------------------------------------------------
 
-        if purchase is not None:
-            if purchase.organization_id != organization.id:
+        purchase = (
+            Purchase.objects
+            .select_for_update()
+            .get(pk=purchase.pk)
+        )
+
+        # ----------------------------------------------------
+        # Calculate purchase amounts from database
+        # ----------------------------------------------------
+
+        items_total = (
+            PurchaseItem.objects
+            .filter(purchase=purchase)
+            .aggregate(
+                total=Sum("total_price"),
+            )
+            .get("total")
+            or Decimal("0")
+        )
+
+        additional_costs_total = (
+            PurchaseAdditionalCost.objects
+            .filter(purchase=purchase)
+            .aggregate(
+                total=Sum("amount"),
+            )
+            .get("total")
+            or Decimal("0")
+        )
+
+        grand_total = (
+            items_total + additional_costs_total
+        )
+
+        # ====================================================
+        # CASE 1: Purchase WITHOUT supplier
+        # ====================================================
+
+        if purchase.supplier_id is None:
+
+            # Supplier must not be provided.
+            if supplier is not None:
+                raise ValidationError(
+                    {
+                        "supplier": (
+                            "این خرید تأمین‌کننده ندارد."
+                        )
+                    }
+                )
+
+            # The backend calculates the payment amount.
+            if grand_total <= Decimal("0"):
                 raise ValidationError(
                     {
                         "purchase": (
-                            "این خرید متعلق به "
+                            "مبلغ نهایی خرید باید "
+                            "بیشتر از صفر باشد."
+                        )
+                    }
+                )
+
+            previous_payments = (
+                SupplierPayment.objects
+                .filter(
+                    organization=organization,
+                    supplier__isnull=True,
+                    purchase=purchase,
+                )
+                .aggregate(
+                    total=Sum("amount"),
+                )
+                .get("total")
+                or Decimal("0")
+            )
+
+            remaining_amount = (
+                grand_total - previous_payments
+            )
+
+            if remaining_amount <= Decimal("0"):
+                raise ValidationError(
+                    {
+                        "purchase": (
+                            "این خرید قبلاً "
+                            "به‌طور کامل پرداخت شده است."
+                        )
+                    }
+                )
+
+            # Ignore any client-provided amount.
+            payment_amount = remaining_amount
+
+        # ====================================================
+        # CASE 2: Purchase WITH supplier
+        # ====================================================
+
+        else:
+
+            # Supplier is required.
+            if supplier is None:
+                raise ValidationError(
+                    {
+                        "supplier": (
+                            "برای این خرید باید "
+                            "تأمین‌کننده مشخص شود."
+                        )
+                    }
+                )
+
+            # Supplier must belong to the same organization.
+            if supplier.organization_id != organization.id:
+                raise ValidationError(
+                    {
+                        "supplier": (
+                            "این تأمین‌کننده متعلق به "
                             "کسب‌وکار شما نیست."
                         )
                     }
                 )
 
+            # Supplier must be active.
+            if not supplier.is_active:
+                raise ValidationError(
+                    {
+                        "supplier": (
+                            "این تأمین‌کننده غیرفعال است."
+                        )
+                    }
+                )
+
+            # Supplier must match the purchase supplier.
             if purchase.supplier_id != supplier.id:
                 raise ValidationError(
                     {
@@ -701,33 +827,10 @@ class SupplierPaymentService:
                     }
                 )
 
-            if purchase.status == PurchaseStatus.CANCELLED:
-                raise ValidationError(
-                    {
-                        "purchase": (
-                            "برای خرید لغوشده "
-                            "نمی‌توان پرداخت ثبت کرد."
-                        )
-                    }
-                )
-
-            # Lock the purchase so two concurrent payments
-            # cannot exceed the remaining payable amount.
-            purchase = (
-                Purchase.objects
-                .select_for_update()
-                .get(pk=purchase.pk)
-            )
-
-            purchase_total = (
-                PurchaseItem.objects
-                .filter(purchase=purchase)
-                .aggregate(
-                    total=Sum("total_price"),
-                )
-                .get("total")
-                or Decimal("0")
-            )
+            # ------------------------------------------------
+            # Supplier payable = ONLY items_total
+            # Additional costs are not supplier debt.
+            # ------------------------------------------------
 
             previous_payments = (
                 SupplierPayment.objects
@@ -744,15 +847,35 @@ class SupplierPaymentService:
             )
 
             remaining_payable = (
-                purchase_total - previous_payments
+                items_total - previous_payments
             )
 
             if remaining_payable <= Decimal("0"):
                 raise ValidationError(
                     {
                         "purchase": (
-                            "این خرید قبلاً به‌طور کامل "
-                            "پرداخت شده است."
+                            "این خرید قبلاً "
+                            "به‌طور کامل پرداخت شده است."
+                        )
+                    }
+                )
+
+            # Amount is required for supplier purchases.
+            if amount is None:
+                raise ValidationError(
+                    {
+                        "amount": (
+                            "مبلغ پرداخت الزامی است."
+                        )
+                    }
+                )
+
+            if amount <= Decimal("0"):
+                raise ValidationError(
+                    {
+                        "amount": (
+                            "مبلغ پرداخت باید "
+                            "بیشتر از صفر باشد."
                         )
                     }
                 )
@@ -763,9 +886,11 @@ class SupplierPaymentService:
                         "amount": (
                             "مبلغ پرداخت بیشتر از "
                             "مانده بدهی خرید است."
-                        ),
+                        )
                     }
                 )
+
+            payment_amount = amount
 
         # ----------------------------------------------------
         # Create payment
@@ -775,28 +900,32 @@ class SupplierPaymentService:
             organization=organization,
             supplier=supplier,
             purchase=purchase,
-            amount=amount,
+            amount=payment_amount,
             method=method,
             paid_at=paid_at,
             note=note,
         )
 
         # ----------------------------------------------------
-        # Create supplier ledger transaction
+        # Supplier ledger transaction
+        #
+        # Supplier-less purchases do NOT create a ledger
+        # transaction.
         # ----------------------------------------------------
 
-        SupplierTransaction.objects.create(
-            organization=organization,
-            supplier=supplier,
-            transaction_type=(
-                SupplierTransactionType.PAYMENT
-            ),
-            direction=AccountDirection.DEBIT,
-            amount=amount,
-            purchase=purchase,
-            payment=payment,
-            note=note,
-        )
+        if supplier is not None:
+            SupplierTransaction.objects.create(
+                organization=organization,
+                supplier=supplier,
+                transaction_type=(
+                    SupplierTransactionType.PAYMENT
+                ),
+                direction=AccountDirection.DEBIT,
+                amount=payment_amount,
+                purchase=purchase,
+                payment=payment,
+                note=note,
+            )
 
         return payment
 

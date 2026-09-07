@@ -23,6 +23,8 @@ from .models import (
 class CustomerPaymentCreateSerializer(serializers.Serializer):
     customer = serializers.PrimaryKeyRelatedField(
         queryset=Customer.objects.all(),
+        required=False,
+        allow_null=True,
     )
 
     order = serializers.PrimaryKeyRelatedField(
@@ -35,6 +37,8 @@ class CustomerPaymentCreateSerializer(serializers.Serializer):
         max_digits=14,
         decimal_places=2,
         min_value=Decimal("0.01"),
+        required=False,
+        allow_null=True,
     )
 
     method = serializers.ChoiceField(
@@ -51,8 +55,11 @@ class CustomerPaymentCreateSerializer(serializers.Serializer):
 
     def validate_customer(
         self,
-        customer: Customer,
-    ) -> Customer:
+        customer: Customer | None,
+    ) -> Customer | None:
+        if customer is None:
+            return None
+
         request = self.context.get("request")
 
         if request is None:
@@ -100,11 +107,30 @@ class CustomerPaymentCreateSerializer(serializers.Serializer):
         return order
 
     def validate(self, attrs):
-        customer = attrs["customer"]
+        customer = attrs.get("customer")
         order = attrs.get("order")
+        amount = attrs.get("amount")
 
+        # ---------------------------------------------------------
+        # 1. پرداخت بدون مشتری باید به سفارش متصل باشد
+        # ---------------------------------------------------------
+        if customer is None and order is None:
+            raise serializers.ValidationError(
+                {
+                    "customer": (
+                        "پرداخت باید به یک مشتری "
+                        "یا سفارش مرتبط باشد."
+                    )
+                }
+            )
+
+        # ---------------------------------------------------------
+        # 2. اگر مشتری و سفارش هر دو وجود دارند،
+        #    سفارش باید متعلق به همان مشتری باشد.
+        # ---------------------------------------------------------
         if (
-            order is not None
+            customer is not None
+            and order is not None
             and order.customer_id != customer.id
         ):
             raise serializers.ValidationError(
@@ -116,9 +142,46 @@ class CustomerPaymentCreateSerializer(serializers.Serializer):
                 }
             )
 
+        # ---------------------------------------------------------
+        # 3. اگر پرداخت مهمان است،
+        #    سفارش هم باید سفارش مهمان باشد.
+        # ---------------------------------------------------------
+        if (
+            customer is None
+            and order is not None
+            and order.customer_id is not None
+        ):
+            raise serializers.ValidationError(
+                {
+                    "order": (
+                        "این سفارش متعلق به یک "
+                        "مشتری ثبت‌شده است."
+                    )
+                }
+            )
+
+        # ---------------------------------------------------------
+        # 4. مشتری ثبت‌شده → مبلغ الزامی است
+        # ---------------------------------------------------------
+        if customer is not None and amount is None:
+            raise serializers.ValidationError(
+                {
+                    "amount": (
+                        "مبلغ پرداخت برای "
+                        "مشتری ثبت‌شده الزامی است."
+                    )
+                }
+            )
+
+        # ---------------------------------------------------------
+        # 5. مهمان → مبلغ اختیاری است
+        #    مبلغ واقعی در Service محاسبه می‌شود.
+        # ---------------------------------------------------------
+
         return attrs
 
 
+    
 # ============================================================
 # Customer Account
 # ============================================================

@@ -27,46 +27,77 @@ from .models import (
 )
 
 
+from decimal import Decimal
+from typing import Any
+
+from django.db import transaction
+from django.db.models import Sum
+from rest_framework.exceptions import ValidationError
+
+from apps.sales.models import (
+    Customer,
+    CustomerPayment,
+    CustomerTransaction,
+    Order,
+    OrderItem,
+)
+
+from apps.organizations.models import Organization
+
+
 class CustomerPaymentService:
     @staticmethod
     @transaction.atomic
     def create_payment(
         *,
         organization: Organization,
-        customer: Customer,
-        amount: Decimal,
+        customer: Customer | None,
+        amount: Decimal | None = None,
         method: str,
         paid_at: Any,
         order: Order | None = None,
         note: str = "",
     ) -> CustomerPayment:
-        if customer.organization_id != organization.id:
+
+        # ---------------------------------------------------------
+        # 1. پرداخت بدون مشتری فقط برای سفارش رهگذری مجاز است
+        # ---------------------------------------------------------
+        if customer is None and order is None:
             raise ValidationError(
                 {
                     "customer": (
-                        "این مشتری متعلق به کسب‌وکار شما نیست."
+                        "پرداخت بدون مشتری باید "
+                        "به یک سفارش مرتبط باشد."
                     )
                 }
             )
 
-        if not customer.is_active:
-            raise ValidationError(
-                {
-                    "customer": (
-                        "این مشتری غیرفعال است."
-                    )
-                }
-            )
+        # ---------------------------------------------------------
+        # 2. بررسی مشتری ثبت‌شده
+        # ---------------------------------------------------------
+        if customer is not None:
+            if customer.organization_id != organization.id:
+                raise ValidationError(
+                    {
+                        "customer": (
+                            "این مشتری متعلق به "
+                            "کسب‌وکار شما نیست."
+                        )
+                    }
+                )
 
-        if amount <= Decimal("0"):
-            raise ValidationError(
-                {
-                    "amount": (
-                        "مبلغ پرداخت باید بیشتر از صفر باشد."
-                    )
-                }
-            )
+            if not customer.is_active:
+                raise ValidationError(
+                    {
+                        "customer": (
+                            "این مشتری غیرفعال است."
+                        )
+                    }
+                )
 
+        # ---------------------------------------------------------
+        # 3. بررسی سفارش
+        # ---------------------------------------------------------
         if order is not None:
             if order.organization_id != organization.id:
                 raise ValidationError(
@@ -78,15 +109,91 @@ class CustomerPaymentService:
                     }
                 )
 
-            if order.customer_id != customer.id:
+            # اگر مشتری ثبت‌شده وجود دارد،
+            # سفارش باید متعلق به همان مشتری باشد.
+            if (
+                customer is not None
+                and order.customer_id != customer.id
+            ):
                 raise ValidationError(
                     {
                         "order": (
-                            "این سفارش متعلق به این مشتری نیست."
+                            "این سفارش متعلق به "
+                            "مشتری انتخاب‌شده نیست."
                         )
                     }
                 )
 
+            # اگر مشتری وجود ندارد،
+            # سفارش باید واقعاً سفارش رهگذری باشد.
+            if (
+                customer is None
+                and order.customer_id is not None
+            ):
+                raise ValidationError(
+                    {
+                        "order": (
+                            "این سفارش متعلق به یک "
+                            "مشتری ثبت‌شده است."
+                        )
+                    }
+                )
+
+        # ---------------------------------------------------------
+        # 4. پرداخت مشتری ثبت‌شده
+        # ---------------------------------------------------------
+        if customer is not None:
+            if amount is None:
+                raise ValidationError(
+                    {
+                        "amount": (
+                            "مبلغ پرداخت برای مشتری "
+                            "الزامی است."
+                        )
+                    }
+                )
+
+            if amount <= Decimal("0"):
+                raise ValidationError(
+                    {
+                        "amount": (
+                            "مبلغ پرداخت باید بیشتر از صفر باشد."
+                        )
+                    }
+                )
+
+        # ---------------------------------------------------------
+        # 5. پرداخت سفارش رهگذری
+        # ---------------------------------------------------------
+        if customer is None:
+            # در این حالت order حتماً باید وجود داشته باشد
+            # چون در مرحله 1 بررسی شده است.
+            order_total = (
+                OrderItem.objects
+                .filter(order=order)
+                .aggregate(
+                    total=Sum("total_price")
+                )
+                .get("total")
+                or Decimal("0")
+            )
+
+            if order_total <= Decimal("0"):
+                raise ValidationError(
+                    {
+                        "order": (
+                            "مبلغ سفارش باید بیشتر از صفر باشد."
+                        )
+                    }
+                )
+
+            # مبلغ پرداختی مهمان همیشه توسط Backend
+            # از روی مبلغ واقعی سفارش تعیین می‌شود.
+            amount = order_total
+
+        # ---------------------------------------------------------
+        # 6. ایجاد Payment
+        # ---------------------------------------------------------
         payment = CustomerPayment.objects.create(
             organization=organization,
             customer=customer,
@@ -97,21 +204,29 @@ class CustomerPaymentService:
             note=note,
         )
 
-        CustomerTransaction.objects.create(
-            organization=organization,
-            customer=customer,
-            transaction_type=(
-                CustomerTransactionType.PAYMENT
-            ),
-            direction=(
-                CustomerAccountDirection.CREDIT
-            ),
-            amount=amount,
-            order=order,
-            payment=payment,
-            note=note,
-        )
+        # ---------------------------------------------------------
+        # 7. فقط برای مشتری ثبت‌شده
+        #    CustomerTransaction ایجاد کن
+        # ---------------------------------------------------------
+        if customer is not None:
+            CustomerTransaction.objects.create(
+                organization=organization,
+                customer=customer,
+                transaction_type=(
+                    CustomerTransactionType.PAYMENT
+                ),
+                direction=(
+                    CustomerAccountDirection.CREDIT
+                ),
+                amount=amount,
+                order=order,
+                payment=payment,
+                note=note,
+            )
 
+        # ---------------------------------------------------------
+        # 8. به‌روزرسانی وضعیت پرداخت سفارش
+        # ---------------------------------------------------------
         if order is not None:
             paid_amount = (
                 CustomerPayment.objects
@@ -137,10 +252,12 @@ class CustomerPaymentService:
                 order.payment_status = (
                     OrderPaymentStatus.PAID
                 )
+
             elif paid_amount > Decimal("0"):
                 order.payment_status = (
                     OrderPaymentStatus.PARTIALLY_PAID
                 )
+
             else:
                 order.payment_status = (
                     OrderPaymentStatus.UNPAID

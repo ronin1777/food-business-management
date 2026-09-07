@@ -158,18 +158,22 @@ class PurchaseCreateSerializer(serializers.Serializer):
 class SupplierPaymentCreateSerializer(serializers.Serializer):
     supplier = serializers.PrimaryKeyRelatedField(
         queryset=Supplier.objects.all(),
+        required=False,
+        allow_null=True,
     )
 
     purchase = serializers.PrimaryKeyRelatedField(
         queryset=Purchase.objects.all(),
-        required=False,
-        allow_null=True,
+        required=True,
+        allow_null=False,
     )
 
     amount = serializers.DecimalField(
         max_digits=14,
         decimal_places=2,
         min_value=Decimal("0.01"),
+        required=False,
+        allow_null=True,
     )
 
     method = serializers.ChoiceField(
@@ -186,8 +190,11 @@ class SupplierPaymentCreateSerializer(serializers.Serializer):
 
     def validate_supplier(
         self,
-        supplier: Supplier,
-    ) -> Supplier:
+        supplier: Supplier | None,
+    ) -> Supplier | None:
+        if supplier is None:
+            return None
+
         request = self.context.get("request")
 
         if request is None:
@@ -209,11 +216,8 @@ class SupplierPaymentCreateSerializer(serializers.Serializer):
 
     def validate_purchase(
         self,
-        purchase: Purchase | None,
-    ) -> Purchase | None:
-        if purchase is None:
-            return None
-
+        purchase: Purchase,
+    ) -> Purchase:
         request = self.context.get("request")
 
         if request is None:
@@ -228,6 +232,67 @@ class SupplierPaymentCreateSerializer(serializers.Serializer):
 
         return purchase
 
+    def validate(self, attrs):
+        supplier = attrs.get("supplier")
+        purchase = attrs["purchase"]
+        amount = attrs.get("amount")
+
+        # ----------------------------------------------------
+        # Purchase with supplier
+        # ----------------------------------------------------
+
+        if purchase.supplier_id is not None:
+
+            if supplier is None:
+                raise serializers.ValidationError(
+                    {
+                        "supplier": (
+                            "برای این خرید باید "
+                            "تأمین‌کننده مشخص شود."
+                        )
+                    }
+                )
+
+            if purchase.supplier_id != supplier.id:
+                raise serializers.ValidationError(
+                    {
+                        "purchase": (
+                            "این خرید متعلق به "
+                            "تأمین‌کننده انتخاب‌شده نیست."
+                        )
+                    }
+                )
+
+            if amount is None:
+                raise serializers.ValidationError(
+                    {
+                        "amount": (
+                            "برای پرداخت خرید از تأمین‌کننده، "
+                            "مبلغ پرداخت الزامی است."
+                        )
+                    }
+                )
+
+        # ----------------------------------------------------
+        # Purchase without supplier
+        # ----------------------------------------------------
+
+        else:
+
+            if supplier is not None:
+                raise serializers.ValidationError(
+                    {
+                        "supplier": (
+                            "این خرید تأمین‌کننده ندارد."
+                        )
+                    }
+                )
+
+            # Amount is intentionally optional here.
+            # The service calculates the real amount
+            # from the purchase itself.
+
+        return attrs
 
 
 class SupplierAccountSerializer(serializers.Serializer):
@@ -304,6 +369,19 @@ class PurchaseAdditionalCostSerializer(serializers.ModelSerializer):
         read_only_fields = fields
 
 
+from decimal import Decimal
+
+from django.db.models import Sum
+from rest_framework import serializers
+
+from apps.purchases.models import (
+    Purchase,
+    PurchaseItem,
+    PurchaseAdditionalCost,
+    SupplierPayment,
+)
+
+
 class PurchaseDetailSerializer(serializers.ModelSerializer):
     supplier_name = serializers.CharField(
         source="supplier.name",
@@ -325,6 +403,10 @@ class PurchaseDetailSerializer(serializers.ModelSerializer):
     additional_costs_total = serializers.SerializerMethodField()
     grand_total = serializers.SerializerMethodField()
 
+    paid_amount = serializers.SerializerMethodField()
+    remaining_amount = serializers.SerializerMethodField()
+    payment_status = serializers.SerializerMethodField()
+
     class Meta:
         model = Purchase
         fields = (
@@ -339,6 +421,9 @@ class PurchaseDetailSerializer(serializers.ModelSerializer):
             "items_total",
             "additional_costs_total",
             "grand_total",
+            "paid_amount",
+            "remaining_amount",
+            "payment_status",
             "created_at",
             "updated_at",
         )
@@ -368,6 +453,50 @@ class PurchaseDetailSerializer(serializers.ModelSerializer):
             + self.get_additional_costs_total(obj)
         )
 
+    def get_paid_amount(self, obj):
+        return (
+            SupplierPayment.objects
+            .filter(
+                purchase=obj,
+                organization=obj.organization,
+            )
+            .aggregate(total=Sum("amount"))
+            .get("total")
+            or Decimal("0")
+        )
+
+    def get_remaining_amount(self, obj):
+        if obj.supplier_id is not None:
+            total = self.get_items_total(obj)
+        else:
+            total = self.get_grand_total(obj)
+
+        paid_amount = self.get_paid_amount(obj)
+
+        return max(
+            total - paid_amount,
+            Decimal("0"),
+        )
+
+    def get_payment_status(self, obj):
+        if obj.supplier_id is not None:
+            total = self.get_items_total(obj)
+        else:
+            total = self.get_grand_total(obj)
+
+        paid_amount = self.get_paid_amount(obj)
+
+        if paid_amount <= Decimal("0"):
+            return "unpaid"
+
+        if paid_amount >= total:
+            return "paid"
+
+        return "partially_paid"
+
+
+
+    
 
 class SupplierListSerializer(serializers.ModelSerializer):
     class Meta:
@@ -468,18 +597,22 @@ class SupplierTransactionSerializer(
 class SupplierPaymentCreateSerializer(serializers.Serializer):
     supplier = serializers.PrimaryKeyRelatedField(
         queryset=Supplier.objects.all(),
+        required=False,
+        allow_null=True,
     )
 
     purchase = serializers.PrimaryKeyRelatedField(
         queryset=Purchase.objects.all(),
-        required=False,
-        allow_null=True,
+        required=True,
+        allow_null=False,
     )
 
     amount = serializers.DecimalField(
         max_digits=14,
         decimal_places=2,
         min_value=Decimal("0.01"),
+        required=False,
+        allow_null=True,
     )
 
     method = serializers.ChoiceField(
@@ -545,11 +678,34 @@ class SupplierPaymentCreateSerializer(serializers.Serializer):
         return purchase
 
     def validate(self, attrs):
-        supplier = attrs["supplier"]
+        supplier = attrs.get("supplier")
         purchase = attrs.get("purchase")
 
+        if purchase is None:
+            raise serializers.ValidationError(
+                {
+                    "purchase": (
+                        "انتخاب خرید الزامی است."
+                    )
+                }
+            )
+
         if (
-            purchase is not None
+            purchase.supplier_id is not None
+            and supplier is None
+        ):
+            raise serializers.ValidationError(
+                {
+                    "supplier": (
+                        "برای این خرید، "
+                        "تأمین‌کننده الزامی است."
+                    )
+                }
+            )
+
+        if (
+            purchase.supplier_id is not None
+            and supplier is not None
             and purchase.supplier_id != supplier.id
         ):
             raise serializers.ValidationError(
@@ -561,8 +717,32 @@ class SupplierPaymentCreateSerializer(serializers.Serializer):
                 }
             )
 
-        return attrs
+        if (
+            purchase.supplier_id is None
+            and supplier is not None
+        ):
+            raise serializers.ValidationError(
+                {
+                    "supplier": (
+                        "این خرید تأمین‌کننده ندارد."
+                    )
+                }
+            )
 
+        if (
+            purchase.supplier_id is not None
+            and attrs.get("amount") is None
+        ):
+            raise serializers.ValidationError(
+                {
+                    "amount": (
+                        "برای خرید دارای تأمین‌کننده، "
+                        "مبلغ پرداخت الزامی است."
+                    )
+                }
+            )
+
+        return attrs
 
 
 class SupplierRefundCreateSerializer(

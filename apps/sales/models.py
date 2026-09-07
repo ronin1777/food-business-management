@@ -221,10 +221,12 @@ class CustomerPayment(models.Model):
     )
 
     customer = models.ForeignKey(
-        Customer,
-        on_delete=models.PROTECT,
-        related_name="payments",
-    )
+    Customer,
+    on_delete=models.PROTECT,
+    null=True,
+    blank=True,
+    related_name="payments",
+)
 
     order = models.ForeignKey(
         Order,
@@ -263,7 +265,10 @@ class CustomerPayment(models.Model):
         ]
 
     def __str__(self) -> str:
-        return f"{self.customer} - {self.amount}"
+        if self.customer:
+            return f"{self.customer} - {self.amount}"
+
+        return f"Guest - {self.amount}"
 
 
 
